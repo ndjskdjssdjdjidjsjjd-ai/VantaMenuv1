@@ -7,6 +7,8 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <filesystem>
 #include "VantaState.hpp"
 
 using namespace geode::prelude;
@@ -30,7 +32,7 @@ protected:
     CCPoint m_lastDragScreenPos = {0.f, 0.f};
     bool m_draggingScroll = false;
     bool m_draggingWindow = false;
-    async::TaskHolder<Result<std::filesystem::path>> m_fileTaskHolder;
+    async::TaskHolder<Result<std::optional<std::filesystem::path>>> m_fileTaskHolder;
 
     bool init() override {
         if (!Popup::init(m_popupSize.width, m_popupSize.height)) return false;
@@ -44,7 +46,6 @@ protected:
         this->setTitle("VANTA MENU // KAIZXFAQ");
         auto winSize = m_mainLayer->getContentSize();
 
-        // Stylish subtle header accent bar
         auto accentBar = CCDrawNode::create();
         CCPoint barVerts[4] = {
             {18.f, winSize.height - 34.f},
@@ -55,7 +56,6 @@ protected:
         accentBar->drawPolygon(barVerts, 4, {0.25f, 0.82f, 1.00f, 0.45f}, 0.f, {0.f, 0.f, 0.f, 0.f});
         m_mainLayer->addChild(accentBar);
 
-        // Left category sidebar panel
         auto sidePanel = CCScale9Sprite::create("square02b_001.png");
         sidePanel->setColor({14, 18, 28});
         sidePanel->setOpacity(135);
@@ -87,7 +87,6 @@ protected:
             tabMenu->addChild(btn);
         }
 
-        // Right module list panel
         CCPoint listCenter = {winSize.width * 0.5f + 56.f, winSize.height * 0.5f - 14.f};
 
         auto listBg = CCScale9Sprite::create("square02b_001.png");
@@ -277,18 +276,22 @@ protected:
             {"*.png", "*.jpg", "*.jpeg", "*.webp"}
         });
 
+        auto pickFuture = utils::file::pick(utils::file::PickMode::OpenFile, options);
         m_fileTaskHolder.spawn(
-            utils::file::pick(utils::file::PickMode::OpenFile, options),
-            [this](Result<std::optional<std::filesystem::path>> result) {
-                if (result.isOk() && result.unwrap().has_value()) {
-                    std::string chosen = result.unwrap().value().string();
-                    auto& state = VantaState::get();
-                    state.setCustomBgImagePath(chosen);
-                    state.setBool("custom_bg_en", true);
-                    if (m_currentCategory == "Background") {
-                        populateCategory("Background");
+            std::move(pickFuture),
+            [this](auto result) {
+                if (result.isOk()) {
+                    auto optPath = result.unwrap();
+                    if (optPath.has_value()) {
+                        std::string chosen = optPath.value().string();
+                        auto& state = VantaState::get();
+                        state.setCustomBgImagePath(chosen);
+                        state.setBool("custom_bg_en", true);
+                        if (m_currentCategory == "Background") {
+                            populateCategory("Background");
+                        }
+                        FLAlertLayer::create("Custom Photo Set", chosen.c_str(), "OK")->show();
                     }
-                    FLAlertLayer::create("Custom Photo Set", chosen.c_str(), "OK")->show();
                 }
             }
         );
