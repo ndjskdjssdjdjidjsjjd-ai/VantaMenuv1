@@ -31,6 +31,7 @@ public:
     std::unordered_map<std::string, float> floatStates;
     std::unordered_map<std::string, float> savedTabScrollY;
 
+    std::string lastOpenedCategory = "Player";
     std::string customBgImagePath = "";
     std::vector<std::string> customTexturePaths = {
         "/storage/emulated/0/Download/vanta_texture.png",
@@ -63,9 +64,10 @@ public:
             floatStates[id] = Mod::get()->getSavedValue<float>(id, defIdx);
         };
 
+        lastOpenedCategory = Mod::get()->getSavedValue<std::string>("last_opened_category", "Player");
         customBgImagePath = Mod::get()->getSavedValue<std::string>("custom_bg_image_path", "");
 
-        // --- 1. PLAYER & PHYSICS (20 Features) ---
+        // --- 1. PLAYER & PHYSICS ---
         addToggle("noclip", "Noclip", "Player", "Prevents player death on obstacle collision.");
         addToggle("safe_mode", "Safe Mode", "Player", "Blocks level progress and leaderboard submission when cheats are active.", true);
         addToggle("auto_safe_mode", "Auto Safe Mode", "Player", "Automatically enables Safe Mode if Noclip or Speedhack is toggled.", true);
@@ -87,7 +89,7 @@ public:
         addToggle("no_wave_pulse", "Static Wave Trail", "Player", "Prevents wave trail thickness from pulsing with audio.");
         addSlider("gravity_mult", "Gravity Multiplier", "Player", "Scales vertical gravity acceleration.", 0.1f, 3.0f, 1.0f);
 
-        // --- 2. SPEED & ENGINE BYPASS (15 Features) ---
+        // --- 2. SPEED & ENGINE BYPASS ---
         addToggle("fps_bypass_en", "Enable FPS Bypass", "Engine", "Unlocks frame rate cap above native refresh rate.");
         addSlider("fps_val", "Target FPS", "Engine", "Sets target frames per second.", 30.0f, 360.0f, 240.0f);
         addToggle("tps_bypass_en", "Enable TPS Bypass", "Engine", "Decouples physics ticks per second from render FPS.");
@@ -104,11 +106,11 @@ public:
         addToggle("no_shaders", "Disable Shaders", "Engine", "Bypasses post-processing shader layers to save GPU overhead.");
         addToggle("fast_alt_tab", "No Pause on Focus Loss", "Engine", "Keeps game running when switching apps or windows.");
 
-        // --- 3. HITBOXES, BUILDINGS & SEPARATE BG SELECTIONS (27 Features) ---
+        // --- 3. VISUALS, HITBOXES & BUILDINGS ---
         addToggle("show_hitboxes", "Show Hitboxes", "Visuals", "Renders real-time analytical collision boxes & vectors.");
         addToggle("hitbox_on_death", "Hitboxes on Death Only", "Visuals", "Reveals collision boxes only after crashing.");
         addToggle("hitbox_trail", "Hitbox Trail", "Visuals", "Renders multi-frame hitbox trail history.");
-        addToggle("hitbox_trail_death_only", "Hitbox Trail: Death Only", "Visuals", "Shows the hitbox trail only after you die.");
+        addToggle("hitbox_trail_death_only", "Hitbox Trail: Death Only", "Visuals", "Only shows hitbox trail after you die.");
         addChoice("hitbox_trail_color", "Hitbox Trail Color", "Visuals", "Custom color for hitbox trail.", {
             "Cyan", "Crimson", "Neon Green", "Amber Gold", "Violet", "Pure White"
         }, 0.f);
@@ -120,12 +122,6 @@ public:
         }, 0.f);
         addSlider("building_color_mix", "Building Color Blend", "Visuals", "Strength of custom building color.", 0.0f, 1.0f, 0.65f);
         addToggle("hide_deco_buildings", "Simplify Building Deco", "Visuals", "Dims non-solid background/deco blocks for clarity.");
-        addChoice("bg_season_theme", "Season BG Selection", "Visuals", "Separate season theme (Winter, Spring, Summer, Cherry Blossom; no birds).", {
-            "Default", "Winter", "Spring", "Summer", "Cherry Blossom"
-        }, 0.f);
-        addToggle("custom_bg_en", "Custom Image BG Selection", "Visuals", "Separate custom background image using Pick BG Img.");
-        addSlider("custom_bg_opacity", "Custom BG Opacity", "Visuals", "Opacity of selected custom background image.", 0.05f, 1.0f, 0.85f);
-        addSlider("bg_anim_speed", "BG Animation Speed", "Visuals", "Speed of realistic weather & parallax motion.", 0.1f, 3.0f, 1.0f);
         addToggle("custom_texture_en", "Load Custom Player Tex", "Visuals", "Applies a custom image texture to player.");
         addChoice("custom_texture_slot", "Player Tex Preset", "Visuals", "Cycles custom player texture presets.", {
             "Download/vanta_texture.png", "sdcard/custom_icon.png", "GJ_square01.png"
@@ -143,7 +139,16 @@ public:
         addToggle("hide_attempts", "Hide Attempt Text", "Visuals", "Hides the in-level 'Attempt X' label.");
         addToggle("decimal_percent", "Decimal Percentage", "Visuals", "Displays level percentage to two decimal places (e.g., 45.82%).");
 
-        // --- 4. HUD & TELEMETRY LABELS (15 Features) ---
+        // --- 4. BACKGROUND SELECTIONS (Dedicated Section) ---
+        addChoice("bg_season_theme", "Season Background", "Background", "Realistic animated season (no birds).", {
+            "Default", "Winter", "Spring", "Summer", "Cherry Blossom"
+        }, 0.f);
+        addToggle("custom_bg_en", "Custom Photo Background", "Background", "Shows chosen image with automatic motion animation.");
+        addSlider("custom_bg_opacity", "Custom Photo Opacity", "Background", "Transparency of custom photo background.", 0.05f, 1.0f, 0.90f);
+        addSlider("custom_bg_motion", "Photo Auto-Motion", "Background", "Auto zoom & drift intensity on custom photo.", 0.1f, 3.0f, 1.2f);
+        addSlider("bg_anim_speed", "Season Motion Speed", "Background", "Speed of realistic weather & parallax motion.", 0.1f, 3.0f, 1.15f);
+
+        // --- 5. HUD & TELEMETRY LABELS ---
         addToggle("hud_fps", "HUD: Live FPS", "HUD", "Displays real-time frames per second on screen.");
         addToggle("hud_cps", "HUD: Live CPS & Total", "HUD", "Displays current clicks per second and total level clicks.");
         addToggle("hud_noclip_acc", "HUD: Noclip Accuracy", "HUD", "Shows exact survival frame percentage while using Noclip.");
@@ -160,7 +165,7 @@ public:
         addSlider("hud_opacity", "HUD Opacity", "HUD", "Adjusts transparency of HUD overlay labels.", 0.1f, 1.0f, 0.8f);
         addToggle("hud_top_left", "HUD Anchor: Top-Left", "HUD", "Aligns telemetry labels to top-left corner.");
 
-        // --- 5. PRACTICE & STARTPOS (15 Features) ---
+        // --- 6. PRACTICE & STARTPOS ---
         addToggle("practice_music", "Practice Music Hack", "Practice", "Plays normal level soundtrack instead of practice loop.");
         addToggle("auto_checkpoint", "Fast Auto-Checkpoints", "Practice", "Places practice checkpoints more frequently.");
         addToggle("no_checkpoint_lag", "No Checkpoint Save Lag", "Practice", "Optimizes state serialization when placing checkpoints.");
@@ -177,7 +182,7 @@ public:
         addToggle("save_checkpoints", "Persist Checkpoints", "Practice", "Keeps practice checkpoints across level restarts.");
         addToggle("checkpoint_fix", "Fix Checkpoint Physics", "Practice", "Restores exact Y-velocity and rotation on checkpoint load.");
 
-        // --- 6. BYPASSES, COPY & AUTO SONG DOWNLOAD (17 Features) ---
+        // --- 7. BYPASSES, COPY & AUTO SONG DOWNLOAD ---
         addToggle("copy_hack", "Level Copy Bypass", "Bypass", "Allows copying any online level without a password.");
         addToggle("auto_song_download", "Auto Song Download", "Bypass", "Automatically downloads missing level songs when opening/playing.");
         addToggle("icon_hack", "Unlock All Icons", "Bypass", "Unlocks all cubes, ships, balls, UFOs, waves, robots, spiders, swings.");
@@ -217,6 +222,11 @@ public:
     void setFloat(const std::string& id, float val) {
         floatStates[id] = val;
         Mod::get()->setSavedValue<float>(id, val);
+    }
+
+    void setLastOpenedCategory(const std::string& cat) {
+        lastOpenedCategory = cat;
+        Mod::get()->setSavedValue<std::string>("last_opened_category", cat);
     }
 
     void setCustomBgImagePath(const std::string& path) {
