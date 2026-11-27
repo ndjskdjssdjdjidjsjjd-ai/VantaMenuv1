@@ -11,8 +11,10 @@ using namespace geode::prelude;
 class VantaPopup : public geode::Popup {
 protected:
     std::string m_currentCategory = "Player";
-    CCScrollLayerExt* m_scrollLayer = nullptr;
+    CCLayer* m_contentLayer = nullptr;
     CCSize m_scrollSize = {290.f, 210.f};
+    float m_maxScrollY = 0.f;
+    float m_scrollY = 0.f;
 
     bool init() {
         if (!Popup::init(440.f, 285.f)) return false;
@@ -51,7 +53,6 @@ protected:
         listBg->setPosition(listCenter);
         m_mainLayer->addChild(listBg);
 
-        // Clipping node prevents list rows from overflowing outside the box
         auto stencil = CCDrawNode::create();
         CCPoint rectVerts[4] = {
             {0.f, 0.f},
@@ -69,8 +70,24 @@ protected:
         });
         m_mainLayer->addChild(clipper);
 
-        m_scrollLayer = CCScrollLayerExt::create({0.f, 0.f, m_scrollSize.width, m_scrollSize.height});
-        clipper->addChild(m_scrollLayer);
+        m_contentLayer = CCLayer::create();
+        m_contentLayer->setContentSize(m_scrollSize);
+        clipper->addChild(m_contentLayer);
+
+        // Quick scroll up/down buttons on the right edge for easy mobile/mouse scrolling
+        auto scrollMenu = CCMenu::create();
+        scrollMenu->setPosition({listCenter.x + boxSize.width / 2.f + 12.f, listCenter.y});
+        m_mainLayer->addChild(scrollMenu);
+
+        auto upSpr = ButtonSprite::create("^", 16, true, "bigFont.fnt", "GJ_button_04.png", 18.f, 0.45f);
+        auto upBtn = CCMenuItemSpriteExtra::create(upSpr, this, menu_selector(VantaPopup::onScrollUp));
+        upBtn->setPosition({0.f, 45.f});
+        scrollMenu->addChild(upBtn);
+
+        auto dnSpr = ButtonSprite::create("v", 16, true, "bigFont.fnt", "GJ_button_04.png", 18.f, 0.45f);
+        auto dnBtn = CCMenuItemSpriteExtra::create(dnSpr, this, menu_selector(VantaPopup::onScrollDown));
+        dnBtn->setPosition({0.f, -45.f});
+        scrollMenu->addChild(dnBtn);
 
         auto countLabel = CCLabelBMFont::create(
             "100 Modules + Settings | Multi-Platform v2.2091", "chatFont.fnt"
@@ -89,9 +106,21 @@ protected:
         populateCategory(btn->getID());
     }
 
+    void onScrollUp(CCObject*) {
+        m_scrollY = std::max(0.f, m_scrollY - 76.f);
+        m_contentLayer->setPositionY(m_scrollY);
+    }
+
+    void onScrollDown(CCObject*) {
+        m_scrollY = std::min(m_maxScrollY, m_scrollY + 76.f);
+        m_contentLayer->setPositionY(m_scrollY);
+    }
+
     void populateCategory(const std::string& category) {
         m_currentCategory = category;
-        m_scrollLayer->m_contentLayer->removeAllChildren();
+        m_contentLayer->removeAllChildren();
+        m_scrollY = 0.f;
+        m_contentLayer->setPositionY(0.f);
 
         auto& state = VantaState::get();
         std::vector<FeatureItem> filtered;
@@ -106,14 +135,15 @@ protected:
             m_scrollSize.height,
             static_cast<float>(filtered.size()) * itemHeight + 12.f
         );
-        m_scrollLayer->m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
+        m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
+        m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
 
         float currentY = totalHeight - 22.f;
 
         for (const auto& feat : filtered) {
             auto row = CCNode::create();
             row->setPosition({0.f, currentY});
-            m_scrollLayer->m_contentLayer->addChild(row);
+            m_contentLayer->addChild(row);
 
             auto nameLbl = CCLabelBMFont::create(feat.name.c_str(), "bigFont.fnt");
             nameLbl->setScale(0.38f);
@@ -172,8 +202,6 @@ protected:
 
             currentY -= itemHeight;
         }
-
-        m_scrollLayer->moveToTop();
     }
 
     void onToggleFeature(CCObject* sender) {
@@ -207,7 +235,7 @@ protected:
                 state.setFloat(id, cur);
 
                 if (auto lbl = typeinfo_cast<CCLabelBMFont*>(
-                    m_scrollLayer->m_contentLayer->getChildByIDRecursive(id + "_lbl")
+                    m_contentLayer->getChildByIDRecursive(id + "_lbl")
                 )) {
                     lbl->setString(fmt::format("{:.2f}", cur).c_str());
                 }
