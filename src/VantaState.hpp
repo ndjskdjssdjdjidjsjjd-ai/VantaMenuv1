@@ -29,12 +29,14 @@ public:
     std::vector<FeatureItem> features;
     std::unordered_map<std::string, bool> boolStates;
     std::unordered_map<std::string, float> floatStates;
+    std::unordered_map<std::string, float> savedTabScrollY;
+
+    std::string customBgImagePath = "";
     std::vector<std::string> customTexturePaths = {
         "/storage/emulated/0/Download/vanta_texture.png",
         "/sdcard/Download/custom_icon.png",
         "GJ_square01.png"
     };
-    int customTextureIndex = 0;
 
     int currentDeaths = 0;
     int totalClicks = 0;
@@ -60,6 +62,8 @@ public:
             features.push_back({id, name, cat, desc, true, 0.f, static_cast<float>(opts.size() - 1), defIdx, opts});
             floatStates[id] = Mod::get()->getSavedValue<float>(id, defIdx);
         };
+
+        customBgImagePath = Mod::get()->getSavedValue<std::string>("custom_bg_image_path", "");
 
         // --- 1. PLAYER & PHYSICS (20 Features) ---
         addToggle("noclip", "Noclip", "Player", "Prevents player death on obstacle collision.");
@@ -100,24 +104,30 @@ public:
         addToggle("no_shaders", "Disable Shaders", "Engine", "Bypasses post-processing shader layers to save GPU overhead.");
         addToggle("fast_alt_tab", "No Pause on Focus Loss", "Engine", "Keeps game running when switching apps or windows.");
 
-        // --- 3. HITBOXES, BUILDINGS & 3D BACKGROUNDS (24 Features) ---
+        // --- 3. HITBOXES, BUILDINGS & REALISTIC BACKGROUNDS (26 Features) ---
         addToggle("show_hitboxes", "Show Hitboxes", "Visuals", "Renders real-time analytical collision boxes & vectors.");
         addToggle("hitbox_on_death", "Hitboxes on Death Only", "Visuals", "Reveals collision boxes only after crashing.");
-        addToggle("hitbox_trail", "Analytical Hitbox Trail", "Visuals", "Renders multi-frame hitbox history with velocity/state markers.");
+        addToggle("hitbox_trail", "Hitbox Trail", "Visuals", "Renders multi-frame hitbox trail history.");
+        addToggle("hitbox_trail_death_only", "Hitbox Trail: Death Only", "Visuals", "Shows the hitbox trail only after you die.");
+        addChoice("hitbox_trail_color", "Hitbox Trail Color", "Visuals", "Custom color for hitbox trail.", {
+            "Cyan", "Crimson", "Neon Green", "Amber Gold", "Violet", "Pure White"
+        }, 0.f);
         addSlider("hitbox_trail_len", "Hitbox Trail Frames", "Visuals", "Number of frames stored in hitbox trail.", 10.0f, 1000.0f, 240.0f);
         addSlider("hitbox_opacity", "Hitbox Fill Opacity", "Visuals", "Opacity of interior hitbox shading.", 0.0f, 1.0f, 0.25f);
-        addToggle("custom_texture_en", "Load Custom Texture", "Visuals", "Applies a custom image texture from file/cache to player.");
-        addChoice("custom_texture_slot", "Texture Preset/Path", "Visuals", "Cycles custom texture path presets.", {
+        addSlider("building_opacity", "Building Opacity", "Visuals", "Customizes opacity of level building blocks.", 0.05f, 1.0f, 1.0f);
+        addChoice("building_color", "Building Custom Color", "Visuals", "Custom color tint for level buildings.", {
+            "Original", "Ice Blue", "Crimson", "Emerald", "Gold", "Cyber Purple", "Slate Gray"
+        }, 0.f);
+        addSlider("building_color_mix", "Building Color Blend", "Visuals", "Strength of custom building color.", 0.0f, 1.0f, 0.65f);
+        addToggle("hide_deco_buildings", "Simplify Building Deco", "Visuals", "Dims non-solid background/deco blocks for clarity.");
+        addChoice("bg_theme", "Animated BG Theme", "Visuals", "Realistic animated themes (no birds).", {
+            "Default", "Winter", "Spring", "Summer", "Cherry Blossom", "Custom Image"
+        }, 0.f);
+        addSlider("bg_anim_speed", "BG Animation Speed", "Visuals", "Speed of realistic weather & parallax motion.", 0.1f, 3.0f, 1.0f);
+        addToggle("custom_texture_en", "Load Custom Player Tex", "Visuals", "Applies a custom image texture to player.");
+        addChoice("custom_texture_slot", "Player Tex Preset", "Visuals", "Cycles custom player texture presets.", {
             "Download/vanta_texture.png", "sdcard/custom_icon.png", "GJ_square01.png"
         }, 0.f);
-        addSlider("building_opacity", "Building Opacity", "Visuals", "Customizes opacity of level building blocks (0.05 to 1.0).", 0.05f, 1.0f, 1.0f);
-        addToggle("building_tint_en", "Building Tint Mode", "Visuals", "Applies subtle analytical shading to building structures.");
-        addToggle("hide_deco_buildings", "Simplify Building Deco", "Visuals", "Dims non-solid background/deco blocks for clarity.");
-        addChoice("bg_3d_theme", "Animated 3D BG Theme", "Visuals", "3D parallax & animated background selection.", {
-            "Default", "Winter (3D)", "Fire (3D)", "Spring (3D)",
-            "Summer (3D)", "Cherry Blossom (3D)", "Galaxy (3D)", "Custom Image (3D)"
-        }, 0.f);
-        addSlider("bg_3d_depth", "3D Parallax Depth", "Visuals", "Controls 3D perspective & depth shift intensity.", 0.1f, 2.5f, 1.0f);
         addToggle("no_trail", "Hide Player Trail", "Visuals", "Disables standard motion streak behind icon.");
         addToggle("force_trail", "Always Show Trail", "Visuals", "Forces player motion streak on even when disabled by triggers.");
         addToggle("solid_wave", "Solid Wave Trail", "Visuals", "Renders wave trail with solid opacity instead of fading.");
@@ -205,6 +215,36 @@ public:
     void setFloat(const std::string& id, float val) {
         floatStates[id] = val;
         Mod::get()->setSavedValue<float>(id, val);
+    }
+
+    void setCustomBgImagePath(const std::string& path) {
+        customBgImagePath = path;
+        Mod::get()->setSavedValue<std::string>("custom_bg_image_path", path);
+    }
+
+    ccColor4F getHitboxTrailColor() {
+        int idx = static_cast<int>(std::round(getFloat("hitbox_trail_color")));
+        switch (idx) {
+            case 1: return {1.00f, 0.15f, 0.25f, 0.85f}; // Crimson
+            case 2: return {0.15f, 1.00f, 0.45f, 0.85f}; // Neon Green
+            case 3: return {1.00f, 0.72f, 0.10f, 0.85f}; // Amber Gold
+            case 4: return {0.72f, 0.28f, 1.00f, 0.85f}; // Violet
+            case 5: return {1.00f, 1.00f, 1.00f, 0.85f}; // Pure White
+            default: return {0.15f, 0.88f, 1.00f, 0.85f}; // Cyan
+        }
+    }
+
+    ccColor3B getBuildingColorRGB() {
+        int idx = static_cast<int>(std::round(getFloat("building_color")));
+        switch (idx) {
+            case 1: return {115, 205, 255}; // Ice Blue
+            case 2: return {255, 95, 110};  // Crimson
+            case 3: return {90, 240, 145};  // Emerald
+            case 4: return {255, 205, 80};  // Gold
+            case 5: return {190, 115, 255}; // Cyber Purple
+            case 6: return {140, 150, 168}; // Slate Gray
+            default: return {255, 255, 255}; // Original
+        }
     }
 
     std::string getActiveCustomTexturePath() {
