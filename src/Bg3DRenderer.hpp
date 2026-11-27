@@ -34,9 +34,10 @@ public:
                 customSprite,
                 winSize,
                 camPos,
-                t,
+                timeSec,
                 state.customBgImagePath,
-                state.getFloat("custom_bg_opacity")
+                state.getFloat("custom_bg_opacity"),
+                state.getFloat("custom_bg_motion")
             );
         } else if (customSprite) {
             customSprite->setVisible(false);
@@ -51,7 +52,7 @@ public:
                     static_cast<float>((i * 137) % 1600) - 200.f,
                     static_cast<float>((i * 83) % 900) - 100.f,
                     depth,
-                    (2.2f + (i % 4) * 1.3f) * depth,
+                    (2.4f + (i % 4) * 1.4f) * depth,
                     static_cast<float>(i) * 0.7f
                 });
             }
