@@ -1,16 +1,16 @@
 {
 	"geode": "6.0.0",
 	"gd": {
-		"win": "2.209",
-		"mac": "2.209",
-		"android": "2.209",
-		"ios": "2.209"
+		"win": "2.2091",
+		"mac": "2.2091",
+		"android": "2.2091",
+		"ios": "2.2091"
 	},
 	"version": "v1.0.0",
 	"id": "kaizxfaq.vantamenuv1",
 	"name": "VantaMenuv1",
 	"developer": "kaizxfaq",
-	"description": "100-feature Geode mod menu for Geometry Dash 2.209 across Windows, macOS, Android, and iOS.",
+	"description": "100-feature Geode mod menu for Geometry Dash 2.2091 across Windows, macOS, Android, and iOS.",
 	"settings": {
 		"toggle-key": {
 			"name": "Button Opacity",
