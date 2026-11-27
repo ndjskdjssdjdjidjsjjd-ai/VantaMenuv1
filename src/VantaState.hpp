@@ -41,13 +41,10 @@ public:
     int sessionAttempts = 0;
     float noclipDeaths = 0.0f;
     float noclipFrames = 0.0f;
-    int selectedStartPos = -1; // -1 = normal start
+    int selectedStartPos = -1;
 
     void initFeatures() {
         if (!features.empty()) return;
-
-        // Sync Geode mod setting for hiding menu button
-        bool geodeHideBtn = Mod::get()->getSettingValue<bool>("hide-menu-btn");
 
         auto addToggle = [&](std::string id, std::string name, std::string cat, std::string desc, bool def = false) {
             features.push_back({id, name, cat, desc, false, 0.f, 1.f, def ? 1.f : 0.f, {}});
@@ -186,25 +183,19 @@ public:
         addToggle("vault_bypass", "Unlock All Vaults", "Bypass", "Grants immediate access to all Secret Vaults and Treasure Room.");
         addToggle("no_transition", "Instant Menu Transitions", "Bypass", "Removes fade transitions between UI scenes.");
         addToggle("hide_player", "Hide Player Icon", "Bypass", "Makes player sprite invisible while keeping hitboxes.");
+    }
 
-        // --- 7. MENU SETTINGS ---
-        addToggle("hide_menu_btn", "Hide Menu Button", "Settings", "Hides the VANTA button on menus (also in Geode mod settings).", geodeHideBtn);
+    bool isMenuHidden() {
+        return Mod::get()->getSettingValue<bool>("hide-menu");
     }
 
     bool getBool(const std::string& id) {
-        if (id == "hide_menu_btn") {
-            bool geodeSetting = Mod::get()->getSettingValue<bool>("hide-menu-btn");
-            if (geodeSetting) return true;
-        }
         return boolStates[id];
     }
 
     void setBool(const std::string& id, bool val) {
         boolStates[id] = val;
         Mod::get()->setSavedValue<bool>(id, val);
-        if (id == "hide_menu_btn") {
-            Mod::get()->setSettingValue<bool>("hide-menu-btn", val);
-        }
     }
 
     float getFloat(const std::string& id) {
