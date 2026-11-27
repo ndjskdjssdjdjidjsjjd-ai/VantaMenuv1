@@ -7,6 +7,7 @@ project(VantaMenuv1 VERSION 1.0.0)
 
 add_library(${PROJECT_NAME} SHARED
     src/main.cpp
+    src/PlayLayerHooks.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)
