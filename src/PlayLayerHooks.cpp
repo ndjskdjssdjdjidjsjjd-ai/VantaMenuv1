@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "VantaState.hpp"
 #include "HudManager.hpp"
+#include "BgSelection1.hpp"
 #include "Bg3DRenderer.hpp"
 
 using namespace geode::prelude;
@@ -23,7 +24,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         std::vector<StartPosObject*> m_startPositions;
         std::deque<CCRect> m_hitboxHistory;
         std::deque<CCPoint> m_velHistory;
-        std::vector<AmbientParticle> m_bgParticles;
+        std::vector<SeasonParticle> m_bgParticles;
         int m_frameCounter = 0;
         float m_fpsTimer = 0.0f;
         int m_displayedFps = 0;
@@ -92,13 +93,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
     }
 
-    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+    bool init(GJGameLevel* level, bool dontCreateObjects) {
         auto& state = VantaState::get();
         if (state.getBool("force_ldm") && level) {
             level->m_lowDetailModeToggled = true;
         }
 
-        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
+        if (!PlayLayer::init(level, dontCreateObjects)) return false;
 
         state.sessionAttempts = 0;
         state.totalClicks = 0;
