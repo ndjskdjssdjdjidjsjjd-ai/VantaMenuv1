@@ -27,15 +27,45 @@ public:
         node->clear();
 
         auto& state = VantaState::get();
-        int theme = static_cast<int>(std::round(state.getFloat("bg_theme")));
+        int season = static_cast<int>(std::round(state.getFloat("bg_season_theme")));
+        bool customBgEn = state.getBool("custom_bg_en");
         float speed = state.getFloat("bg_anim_speed");
         float t = timeSec * speed;
 
+        // Separate Custom Image BG selection
         if (customSprite) {
-            customSprite->setVisible(false);
+            if (customBgEn && !state.customBgImagePath.empty()) {
+                auto tex = CCTextureCache::sharedTextureCache()->addImage(
+                    state.customBgImagePath.c_str(), false
+                );
+                if (tex) {
+                    customSprite->setTexture(tex);
+                    customSprite->setVisible(true);
+                    GLubyte opByte = static_cast<GLubyte>(
+                        std::clamp(state.getFloat("custom_bg_opacity"), 0.05f, 1.0f) * 255.f
+                    );
+                    customSprite->setOpacity(opByte);
+
+                    float px = winSize.width * 0.5f - (camPos.x * 0.02f) + std::sin(t * 0.7f) * 6.f;
+                    float py = winSize.height * 0.5f - (camPos.y * 0.015f) + std::cos(t * 0.5f) * 4.f;
+                    customSprite->setPosition({px, py});
+
+                    auto texSize = tex->getContentSize();
+                    if (texSize.width > 0.f && texSize.height > 0.f) {
+                        float scaleX = (winSize.width * 1.12f) / texSize.width;
+                        float scaleY = (winSize.height * 1.12f) / texSize.height;
+                        customSprite->setScale(std::max(scaleX, scaleY));
+                    }
+                } else {
+                    customSprite->setVisible(false);
+                }
+            } else {
+                customSprite->setVisible(false);
+            }
         }
 
-        if (theme <= 0) return;
+        // Separate Season BG selection (Winter, Spring, Summer, Cherry Blossom; no birds)
+        if (season <= 0) return;
 
         if (particles.empty()) {
             for (int i = 0; i < 64; ++i) {
@@ -52,30 +82,6 @@ public:
             }
         }
 
-        // Custom file image mode
-        if (theme == 5) {
-            if (!state.customBgImagePath.empty() && customSprite) {
-                auto tex = CCTextureCache::sharedTextureCache()->addImage(
-                    state.customBgImagePath.c_str(), false
-                );
-                if (tex) {
-                    customSprite->setTexture(tex);
-                    customSprite->setVisible(true);
-                    float px = winSize.width * 0.5f - (camPos.x * 0.02f) + std::sin(t * 0.7f) * 6.f;
-                    float py = winSize.height * 0.5f - (camPos.y * 0.015f) + std::cos(t * 0.5f) * 4.f;
-                    customSprite->setPosition({px, py});
-
-                    auto texSize = tex->getContentSize();
-                    if (texSize.width > 0.f && texSize.height > 0.f) {
-                        float scaleX = (winSize.width * 1.12f) / texSize.width;
-                        float scaleY = (winSize.height * 1.12f) / texSize.height;
-                        customSprite->setScale(std::max(scaleX, scaleY));
-                    }
-                }
-            }
-            return;
-        }
-
         ccColor4F skyTop = {0.1f, 0.2f, 0.4f, 0.55f};
         ccColor4F skyMid = {0.2f, 0.4f, 0.6f, 0.55f};
         ccColor4F farRidge = {0.15f, 0.28f, 0.45f, 0.55f};
@@ -83,8 +89,8 @@ public:
         ccColor4F sunGlow = {1.0f, 0.95f, 0.80f, 0.25f};
         ccColor4F moteCol = {1.0f, 1.0f, 1.0f, 0.85f};
 
-        switch (theme) {
-            case 1: // Realistic Winter (Frost sky, snow peaks, drifting snow & wind)
+        switch (season) {
+            case 1: // Winter
                 skyTop = {0.07f, 0.15f, 0.28f, 0.68f};
                 skyMid = {0.42f, 0.66f, 0.88f, 0.62f};
                 farRidge = {0.68f, 0.83f, 0.96f, 0.65f};
@@ -93,7 +99,7 @@ public:
                 moteCol = {0.96f, 0.99f, 1.00f, 0.90f};
                 break;
 
-            case 2: // Realistic Spring (Fresh morning sky, lush rolling hills, soft pollen/petals)
+            case 2: // Spring
                 skyTop = {0.16f, 0.45f, 0.78f, 0.62f};
                 skyMid = {0.62f, 0.88f, 0.68f, 0.58f};
                 farRidge = {0.26f, 0.62f, 0.34f, 0.62f};
@@ -102,7 +108,7 @@ public:
                 moteCol = {0.88f, 1.00f, 0.62f, 0.82f};
                 break;
 
-            case 3: // Realistic Summer (Warm golden-azure sky, sunlit dunes/hills, warm sunbeams/motes)
+            case 3: // Summer
                 skyTop = {0.05f, 0.38f, 0.84f, 0.65f};
                 skyMid = {0.98f, 0.76f, 0.32f, 0.58f};
                 farRidge = {0.20f, 0.52f, 0.36f, 0.58f};
@@ -111,7 +117,7 @@ public:
                 moteCol = {1.00f, 0.92f, 0.52f, 0.80f};
                 break;
 
-            case 4: // Realistic Cherry Blossom (Soft twilight/dusk rose sky, sakura silhouettes, drifting petals)
+            case 4: // Cherry Blossom
                 skyTop = {0.22f, 0.11f, 0.27f, 0.68f};
                 skyMid = {0.94f, 0.64f, 0.78f, 0.62f};
                 farRidge = {0.58f, 0.30f, 0.46f, 0.62f};
@@ -124,7 +130,6 @@ public:
                 break;
         }
 
-        // Layered Sky Bands
         CCPoint upperSky[4] = {
             {0.f, winSize.height * 0.52f},
             {winSize.width, winSize.height * 0.52f},
@@ -141,13 +146,11 @@ public:
         };
         node->drawPolygon(lowerSky, 4, skyMid, 0.f, skyMid);
 
-        // Soft Sun / Atmospheric Glow
         float sunX = winSize.width * 0.76f - std::fmod(camPos.x * 0.015f, winSize.width * 0.25f);
         float sunY = winSize.height * 0.72f + std::sin(t * 0.6f) * 8.f;
         node->drawDot({sunX, sunY}, 56.f + std::sin(t * 1.4f) * 4.f, sunGlow);
         node->drawDot({sunX, sunY}, 24.f, {sunGlow.r, sunGlow.g, sunGlow.b, sunGlow.a * 1.4f});
 
-        // Distant Parallax Ridge
         float farShift = -std::fmod(camPos.x * 0.05f + t * 6.f, 220.f);
         for (int s = -1; s < 7; ++s) {
             float x0 = farShift + s * 220.f;
@@ -162,7 +165,6 @@ public:
             node->drawPolygon(ridge, 4, farRidge, 0.f, farRidge);
         }
 
-        // Near Parallax Ridge
         float nearShift = -std::fmod(camPos.x * 0.11f + t * 14.f, 180.f);
         for (int s = -1; s < 8; ++s) {
             float x0 = nearShift + s * 180.f;
@@ -177,19 +179,18 @@ public:
             node->drawPolygon(ridge, 4, nearRidge, 0.f, nearRidge);
         }
 
-        // Realistic Animated Particles (Snowflakes, Petals, Pollen/Sun Motes — No Birds)
         for (auto& p : particles) {
             float dtStep = (1.f / 60.f) * speed;
-            if (theme == 1) { // Snowfall with realistic gust drift
+            if (season == 1) {
                 p.y -= (24.f + p.depth * 26.f) * dtStep;
                 p.x += (std::sin(t * 1.6f + p.phase) * 20.f + 12.f) * dtStep;
-            } else if (theme == 4) { // Cherry blossom petals swaying & falling
+            } else if (season == 4) {
                 p.y -= (16.f + p.depth * 18.f) * dtStep;
                 p.x += (std::sin(t * 2.1f + p.phase) * 28.f + 10.f) * dtStep;
-            } else if (theme == 2) { // Spring floating petals/pollen
+            } else if (season == 2) {
                 p.y += std::sin(t * 1.4f + p.phase) * 14.f * dtStep;
                 p.x += (std::cos(t * 1.2f + p.phase) * 18.f + 8.f) * dtStep;
-            } else { // Summer warm drifting light motes
+            } else {
                 p.y += std::cos(t * 1.1f + p.phase) * 10.f * dtStep;
                 p.x += (std::sin(t * 0.9f + p.phase) * 16.f + 6.f) * dtStep;
             }
@@ -202,8 +203,7 @@ public:
             float sy = std::fmod(p.y - camPos.y * 0.08f * p.depth, winSize.height);
             if (sy < 0.f) sy += winSize.height;
 
-            if (theme == 4 || theme == 2) {
-                // Petal / leaf shape
+            if (season == 4 || season == 2) {
                 float angle = t * 2.5f + p.phase;
                 float rx = p.size * (0.9f + 0.35f * std::cos(angle));
                 float ry = p.size * 0.65f;
