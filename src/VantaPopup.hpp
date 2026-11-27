@@ -21,7 +21,18 @@ protected:
     float m_scrollY = 0.f;
     float m_lastTouchY = 0.f;
     bool m_draggingScroll = false;
-    EventListener<utils::file::PickResult>* m_pickListener = nullptr;
+    EventListener<utils::file::PickResult> m_pickListener{this, &VantaPopup::onFilePicked};
+
+    void onFilePicked(utils::file::PickResult* event) {
+        if (!event || !event->isOk()) return;
+        if (auto picked = event->getValue()) {
+            std::string chosen = picked->string();
+            auto& state = VantaState::get();
+            state.setCustomBgImagePath(chosen);
+            state.setBool("custom_bg_en", true);
+            FLAlertLayer::create("Custom BG Selected", chosen.c_str(), "OK")->show();
+        }
+    }
 
     bool init() override {
         if (!Popup::init(440.f, 285.f)) return false;
@@ -50,7 +61,6 @@ protected:
             tabMenu->addChild(btn);
         }
 
-        // File picker button for Custom Image background
         auto pickSpr = ButtonSprite::create(
             "Pick BG Img", 82, true, "bigFont.fnt", "GJ_button_01.png", 22.f, 0.42f
         );
@@ -115,29 +125,7 @@ protected:
             "Image Files",
             {"*.png", "*.jpg", "*.jpeg", "*.webp"}
         });
-
-        m_pickListener = new EventListener<utils::file::PickResult>();
-        m_pickListener->bind([this](utils::file::PickResult* event) {
-            if (auto picked = event->getValue()) {
-                std::string chosen = picked->string();
-                VantaState::get().setCustomBgImagePath(chosen);
-                // Switch theme index to "Custom Image" (index 5)
-                auto& state = VantaState::get();
-                state.setFloat("bg_theme", 5.f);
-                for (const auto& f : state.features) {
-                    if (f.id == "bg_theme") {
-                        if (auto lbl = typeinfo_cast<CCLabelBMFont*>(
-                            m_contentLayer->getChildByIDRecursive("bg_theme_lbl")
-                        )) {
-                            lbl->setString(formatSliderValue(f, 5.f).c_str());
-                        }
-                        break;
-                    }
-                }
-                FLAlertLayer::create("Custom BG Selected", chosen.c_str(), "OK")->show();
-            }
-        });
-        m_pickListener->setFilter(utils::file::pick(options));
+        m_pickListener.setFilter(utils::file::pick(options));
     }
 
     void applyScrollLock(float targetY) {
@@ -154,7 +142,6 @@ protected:
         if (m_contentLayer) {
             m_contentLayer->setPositionY(m_scrollY);
         }
-        // Lock this tab's current scroll position
         VantaState::get().savedTabScrollY[m_currentCategory] = m_scrollY;
     }
 
@@ -211,7 +198,6 @@ protected:
     }
 
     void onSelectTab(CCObject* sender) {
-        // Lock current tab's scroll before leaving
         VantaState::get().savedTabScrollY[m_currentCategory] = m_scrollY;
         auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
         populateCategory(btn->getID());
@@ -302,7 +288,6 @@ protected:
             currentY -= itemHeight;
         }
 
-        // Restore locked scroll position for this category when returning
         float restoredY = 0.f;
         auto it = state.savedTabScrollY.find(category);
         if (it != state.savedTabScrollY.end()) {
