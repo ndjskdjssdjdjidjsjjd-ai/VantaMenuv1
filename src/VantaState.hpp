@@ -159,6 +159,9 @@ public:
         addToggle("main_level_bypass", "Unlock Main Demons", "Bypass", "Unlocks Clubstep, TOE2, and Deadlocked without secret coins.");
         addToggle("vault_bypass", "Unlock All Vaults", "Bypass", "Grants immediate access to all Secret Vaults and Treasure Room.");
         addToggle("no_transition", "Instant Menu Transitions", "Bypass", "Removes fade transitions between UI scenes.");
+
+        // --- 7. MENU SETTINGS ---
+        addToggle("hide_menu_btn", "Hide Menu Button", "Settings", "Hides the VANTA button on menus. Re-enable in Geode mod settings.");
     }
 
     bool getBool(const std::string& id) {
