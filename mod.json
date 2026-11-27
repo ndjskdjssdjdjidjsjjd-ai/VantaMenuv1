@@ -19,8 +19,8 @@
 			"min": 0.1,
 			"max": 1.0
 		},
-		"hide-menu-btn": {
-			"name": "Hide Menu Button",
+		"hide-menu": {
+			"name": "Hide Menu",
 			"type": "bool",
 			"default": false
 		}
