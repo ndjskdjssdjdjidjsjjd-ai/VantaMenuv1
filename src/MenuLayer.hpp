@@ -211,7 +211,7 @@ protected:
             auto spr = ButtonSprite::create(cat.c_str(), 75, true, "goldFont.fnt", "GJ_button_04.png", 26.f, 0.55f);
             auto btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(VantaPopup::onSelectTab));
             btn->setID(cat);
-            btn->setPosition({0.f, startY - (i * 34.f)});
+            btn->setPosition({0.f, startY - (static_cast<float>(i) * 34.f)});
             tabMenu->addChild(btn);
             m_tabButtons.push_back(btn);
         }
@@ -306,5 +306,4 @@ protected:
                 rowMenu->addChild(minusBtn);
 
                 auto plusSpr = ButtonSprite::create("+", 20, true, "bigFont.fnt", "GJ_button_01.png", 20.f, 0.5f);
-                auto plusBtn = CCMenuItemSpriteExtra::create(plusSpr, this, menu_selector(VantaPopup::onSliderStep));
-                pl
+                auto plusBtn = CCMenuItemSpriteExtra::create(plusSpr, this, menu_selector(VantaPopup::onSliderStep))
