@@ -3,13 +3,13 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/GameManager.hpp>
-#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/LevelInfoLayer.hpp>
 #include <deque>
 #include <cmath>
 #include <algorithm>
-#include "MenuLayer.hpp"
+#include "VantaState.hpp"
+#include "VantaPopup.hpp"
 
 using namespace geode::prelude;
 
@@ -32,7 +32,9 @@ class $modify(VantaMainMenu, MenuLayer) {
     }
 
     void onOpenVanta(CCObject*) {
-        VantaPopup::create()->show();
+        if (auto popup = VantaPopup::create()) {
+            popup->show();
+        }
     }
 };
 
@@ -50,7 +52,9 @@ class $modify(VantaPauseLayer, PauseLayer) {
     }
 
     void onOpenVantaPause(CCObject*) {
-        VantaPopup::create()->show();
+        if (auto popup = VantaPopup::create()) {
+            popup->show();
+        }
     }
 };
 
