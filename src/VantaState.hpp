@@ -104,7 +104,7 @@ public:
         addToggle("no_shaders", "Disable Shaders", "Engine", "Bypasses post-processing shader layers to save GPU overhead.");
         addToggle("fast_alt_tab", "No Pause on Focus Loss", "Engine", "Keeps game running when switching apps or windows.");
 
-        // --- 3. HITBOXES, BUILDINGS & REALISTIC BACKGROUNDS (26 Features) ---
+        // --- 3. HITBOXES, BUILDINGS & SEPARATE BG SELECTIONS (27 Features) ---
         addToggle("show_hitboxes", "Show Hitboxes", "Visuals", "Renders real-time analytical collision boxes & vectors.");
         addToggle("hitbox_on_death", "Hitboxes on Death Only", "Visuals", "Reveals collision boxes only after crashing.");
         addToggle("hitbox_trail", "Hitbox Trail", "Visuals", "Renders multi-frame hitbox trail history.");
@@ -120,9 +120,11 @@ public:
         }, 0.f);
         addSlider("building_color_mix", "Building Color Blend", "Visuals", "Strength of custom building color.", 0.0f, 1.0f, 0.65f);
         addToggle("hide_deco_buildings", "Simplify Building Deco", "Visuals", "Dims non-solid background/deco blocks for clarity.");
-        addChoice("bg_theme", "Animated BG Theme", "Visuals", "Realistic animated themes (no birds).", {
-            "Default", "Winter", "Spring", "Summer", "Cherry Blossom", "Custom Image"
+        addChoice("bg_season_theme", "Season BG Selection", "Visuals", "Separate season theme (Winter, Spring, Summer, Cherry Blossom; no birds).", {
+            "Default", "Winter", "Spring", "Summer", "Cherry Blossom"
         }, 0.f);
+        addToggle("custom_bg_en", "Custom Image BG Selection", "Visuals", "Separate custom background image using Pick BG Img.");
+        addSlider("custom_bg_opacity", "Custom BG Opacity", "Visuals", "Opacity of selected custom background image.", 0.05f, 1.0f, 0.85f);
         addSlider("bg_anim_speed", "BG Animation Speed", "Visuals", "Speed of realistic weather & parallax motion.", 0.1f, 3.0f, 1.0f);
         addToggle("custom_texture_en", "Load Custom Player Tex", "Visuals", "Applies a custom image texture to player.");
         addChoice("custom_texture_slot", "Player Tex Preset", "Visuals", "Cycles custom player texture presets.", {
@@ -225,25 +227,25 @@ public:
     ccColor4F getHitboxTrailColor() {
         int idx = static_cast<int>(std::round(getFloat("hitbox_trail_color")));
         switch (idx) {
-            case 1: return {1.00f, 0.15f, 0.25f, 0.85f}; // Crimson
-            case 2: return {0.15f, 1.00f, 0.45f, 0.85f}; // Neon Green
-            case 3: return {1.00f, 0.72f, 0.10f, 0.85f}; // Amber Gold
-            case 4: return {0.72f, 0.28f, 1.00f, 0.85f}; // Violet
-            case 5: return {1.00f, 1.00f, 1.00f, 0.85f}; // Pure White
-            default: return {0.15f, 0.88f, 1.00f, 0.85f}; // Cyan
+            case 1: return {1.00f, 0.15f, 0.25f, 0.85f};
+            case 2: return {0.15f, 1.00f, 0.45f, 0.85f};
+            case 3: return {1.00f, 0.72f, 0.10f, 0.85f};
+            case 4: return {0.72f, 0.28f, 1.00f, 0.85f};
+            case 5: return {1.00f, 1.00f, 1.00f, 0.85f};
+            default: return {0.15f, 0.88f, 1.00f, 0.85f};
         }
     }
 
     ccColor3B getBuildingColorRGB() {
         int idx = static_cast<int>(std::round(getFloat("building_color")));
         switch (idx) {
-            case 1: return {115, 205, 255}; // Ice Blue
-            case 2: return {255, 95, 110};  // Crimson
-            case 3: return {90, 240, 145};  // Emerald
-            case 4: return {255, 205, 80};  // Gold
-            case 5: return {190, 115, 255}; // Cyber Purple
-            case 6: return {140, 150, 168}; // Slate Gray
-            default: return {255, 255, 255}; // Original
+            case 1: return {115, 205, 255};
+            case 2: return {255, 95, 110};
+            case 3: return {90, 240, 145};
+            case 4: return {255, 205, 80};
+            case 5: return {190, 115, 255};
+            case 6: return {140, 150, 168};
+            default: return {255, 255, 255};
         }
     }
 
