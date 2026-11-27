@@ -1,7 +1,6 @@
 #pragma once
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
-#include <Geode/utils/file.hpp>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -21,18 +20,6 @@ protected:
     float m_scrollY = 0.f;
     float m_lastTouchY = 0.f;
     bool m_draggingScroll = false;
-    EventListener<utils::file::PickResult> m_pickListener{this, &VantaPopup::onFilePicked};
-
-    void onFilePicked(utils::file::PickResult* event) {
-        if (!event || !event->isOk()) return;
-        if (auto picked = event->getValue()) {
-            std::string chosen = picked->string();
-            auto& state = VantaState::get();
-            state.setCustomBgImagePath(chosen);
-            state.setBool("custom_bg_en", true);
-            FLAlertLayer::create("Custom BG Selected", chosen.c_str(), "OK")->show();
-        }
-    }
 
     bool init() override {
         if (!Popup::init(440.f, 285.f)) return false;
@@ -60,18 +47,6 @@ protected:
             btn->setPosition({0.f, startY - (static_cast<float>(i) * 34.f)});
             tabMenu->addChild(btn);
         }
-
-        auto pickSpr = ButtonSprite::create(
-            "Pick BG Img", 82, true, "bigFont.fnt", "GJ_button_01.png", 22.f, 0.42f
-        );
-        auto pickBtn = CCMenuItemSpriteExtra::create(
-            pickSpr, this, menu_selector(VantaPopup::onPickBackgroundImage)
-        );
-        pickBtn->setPosition({58.f, 18.f});
-        auto utilMenu = CCMenu::create();
-        utilMenu->setPosition({0.f, 0.f});
-        utilMenu->addChild(pickBtn);
-        m_mainLayer->addChild(utilMenu);
 
         CCPoint listCenter = {winSize.width / 2.f + 50.f, winSize.height / 2.f - 10.f};
 
@@ -117,15 +92,6 @@ protected:
         this->setTouchMode(kCCTouchesOneByOne);
         populateCategory("Player");
         return true;
-    }
-
-    void onPickBackgroundImage(CCObject*) {
-        utils::file::FilePickOptions options;
-        options.filters.push_back({
-            "Image Files",
-            {"*.png", "*.jpg", "*.jpeg", "*.webp"}
-        });
-        m_pickListener.setFilter(utils::file::pick(options));
     }
 
     void applyScrollLock(float targetY) {
