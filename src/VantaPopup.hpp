@@ -21,7 +21,7 @@ protected:
     float m_lastTouchY = 0.f;
     bool m_draggingScroll = false;
 
-    bool init() {
+    bool init() override {
         if (!Popup::init(440.f, 285.f)) return false;
 
         this->setTitle("VantaMenuv1 // kaizxfaq");
@@ -67,9 +67,9 @@ protected:
         };
         stencil->drawPolygon(rectVerts, 4, {1.f, 1.f, 1.f, 1.f}, 0.f, {0.f, 0.f, 0.f, 0.f});
 
-        m_clipOrigin = {
-            listCenter.x - m_scrollSize.width / 2.f,
-            listCenter.y - m_scrollSize.height / 2.f
+        m_clipOrigin = CCPoint{
+            listCenter.x - (m_scrollSize.width * 0.5f),
+            listCenter.y - (m_scrollSize.height * 0.5f)
         };
 
         m_clipper = CCClippingNode::create(stencil);
@@ -81,7 +81,6 @@ protected:
         m_contentLayer->setContentSize(m_scrollSize);
         m_clipper->addChild(m_contentLayer);
 
-        // Up/Down buttons for quick step scrolling
         auto scrollMenu = CCMenu::create();
         scrollMenu->setPosition({listCenter.x + boxSize.width / 2.f + 12.f, listCenter.y});
         m_mainLayer->addChild(scrollMenu);
@@ -111,7 +110,11 @@ protected:
 
     std::string formatSliderValue(const FeatureItem& feat, float val) {
         if (!feat.choices.empty()) {
-            int idx = std::clamp(static_cast<int>(std::round(val)), 0, static_cast<int>(feat.choices.size()) - 1);
+            int idx = std::clamp(
+                static_cast<int>(std::round(val)),
+                0,
+                static_cast<int>(feat.choices.size()) - 1
+            );
             return feat.choices[idx];
         }
         return fmt::format("{:.2f}", val);
@@ -138,7 +141,6 @@ protected:
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             float deltaY = local.y - m_lastTouchY;
             m_lastTouchY = local.y;
-            // Dragging finger down moves content up (increases m_scrollY)
             m_scrollY = std::clamp(m_scrollY + deltaY, 0.f, m_maxScrollY);
             m_contentLayer->setPositionY(m_scrollY);
             return;
