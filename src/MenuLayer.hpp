@@ -249,11 +249,13 @@ protected:
         auto& state = VantaState::get();
         std::vector<FeatureItem> filtered;
         for (const auto& f : state.features) {
-            if (f.category == category) filtered.push_back(f);
+            if (f.category == category) {
+                filtered.push_back(f);
+            }
         }
 
         float itemHeight = 36.f;
-        float totalHeight = std::max(210.f, filtered.size() * itemHeight + 10.f);
+        float totalHeight = std::max(210.f, static_cast<float>(filtered.size()) * itemHeight + 10.f);
         m_scrollLayer->m_contentLayer->setContentSize({290.f, totalHeight});
 
         float currentY = totalHeight - 22.f;
@@ -305,5 +307,4 @@ protected:
 
                 auto plusSpr = ButtonSprite::create("+", 20, true, "bigFont.fnt", "GJ_button_01.png", 20.f, 0.5f);
                 auto plusBtn = CCMenuItemSpriteExtra::create(plusSpr, this, menu_selector(VantaPopup::onSliderStep));
-                plusBtn->setID(feat.id + "|up");
-                plusB
+                pl
