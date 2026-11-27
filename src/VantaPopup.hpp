@@ -28,23 +28,23 @@ protected:
         auto winSize = m_mainLayer->getContentSize();
 
         std::vector<std::string> categories = {
-            "Player", "Engine", "Visuals", "HUD", "Practice", "Bypass", "Settings"
+            "Player", "Engine", "Visuals", "HUD", "Practice", "Bypass"
         };
         auto tabMenu = CCMenu::create();
-        tabMenu->setPosition({58.f, winSize.height / 2.f - 6.f});
+        tabMenu->setPosition({58.f, winSize.height / 2.f - 8.f});
         m_mainLayer->addChild(tabMenu);
 
-        float startY = 96.f;
+        float startY = 85.f;
         for (size_t i = 0; i < categories.size(); ++i) {
             auto cat = categories[i];
             auto spr = ButtonSprite::create(
-                cat.c_str(), 75, true, "goldFont.fnt", "GJ_button_04.png", 24.f, 0.52f
+                cat.c_str(), 75, true, "goldFont.fnt", "GJ_button_04.png", 26.f, 0.54f
             );
             auto btn = CCMenuItemSpriteExtra::create(
                 spr, this, menu_selector(VantaPopup::onSelectTab)
             );
             btn->setID(cat);
-            btn->setPosition({0.f, startY - (static_cast<float>(i) * 31.f)});
+            btn->setPosition({0.f, startY - (static_cast<float>(i) * 34.f)});
             tabMenu->addChild(btn);
         }
 
@@ -83,6 +83,7 @@ protected:
 
         auto scrollMenu = CCMenu::create();
         scrollMenu->setPosition({listCenter.x + boxSize.width / 2.f + 12.f, listCenter.y});
+        scrollMenu->setZOrder(50);
         m_mainLayer->addChild(scrollMenu);
 
         auto upSpr = ButtonSprite::create("^", 16, true, "bigFont.fnt", "GJ_button_04.png", 18.f, 0.45f);
@@ -104,8 +105,14 @@ protected:
         m_mainLayer->addChild(countLabel);
 
         this->setTouchEnabled(true);
+        CCTouchDispatcher::get()->addTargetedDelegate(this, -500, false);
         populateCategory("Player");
         return true;
+    }
+
+    void onExit() override {
+        CCTouchDispatcher::get()->removeDelegate(this);
+        Popup::onExit();
     }
 
     std::string formatSliderValue(const FeatureItem& feat, float val) {
