@@ -113,37 +113,34 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        m_fields->m_bg3DNode = CCDrawNode::create();
-        m_fields->m_bg3DNode->setZOrder(-10);
-        this->addChild(m_fields->m_bg3DNode);
-
+        // Render behind game objects/UI on PlayLayer in screen space
         m_fields->m_customBgSprite = CCSprite::create();
         m_fields->m_customBgSprite->setVisible(false);
-        m_fields->m_customBgSprite->setZOrder(-11);
-        this->addChild(m_fields->m_customBgSprite);
+        this->addChild(m_fields->m_customBgSprite, -2);
+
+        m_fields->m_bg3DNode = CCDrawNode::create();
+        this->addChild(m_fields->m_bg3DNode, -1);
 
         m_fields->m_hudLabel = CCLabelBMFont::create("", "bigFont.fnt");
         m_fields->m_hudLabel->setAnchorPoint({0.f, 1.f});
         m_fields->m_hudLabel->setPosition({12.f, winSize.height - 10.f});
-        m_fields->m_hudLabel->setZOrder(500);
-        this->addChild(m_fields->m_hudLabel);
+        this->addChild(m_fields->m_hudLabel, 500);
 
         m_fields->m_cheatDot = CCDrawNode::create();
         m_fields->m_cheatDot->setPosition({winSize.width - 16.f, winSize.height - 16.f});
-        m_fields->m_cheatDot->setZOrder(501);
-        this->addChild(m_fields->m_cheatDot);
+        this->addChild(m_fields->m_cheatDot, 501);
 
         m_fields->m_hitboxNode = CCDrawNode::create();
-        m_fields->m_hitboxNode->setZOrder(450);
         if (m_objectLayer) {
-            m_objectLayer->addChild(m_fields->m_hitboxNode);
+            m_objectLayer->addChild(m_fields->m_hitboxNode, 450);
+        } else {
+            this->addChild(m_fields->m_hitboxNode, 450);
         }
 
         m_fields->m_startPosMenu = CCMenu::create();
         m_fields->m_startPosMenu->setPosition({winSize.width * 0.5f, 34.f});
-        m_fields->m_startPosMenu->setZOrder(510);
         m_fields->m_startPosMenu->setVisible(state.getBool("startpos_switcher"));
-        this->addChild(m_fields->m_startPosMenu);
+        this->addChild(m_fields->m_startPosMenu, 510);
 
         auto prevSpr = ButtonSprite::create("< SP", 42, true, "bigFont.fnt", "GJ_button_04.png", 22.f, 0.45f);
         auto prevBtn = CCMenuItemSpriteExtra::create(prevSpr, this, menu_selector(VantaPlayLayer::onPrevStartPos));
@@ -306,10 +303,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
             CCRect pRect = m_player1->getObjectRect();
             CCPoint pCenter = {pRect.getMidX(), pRect.getMidY()};
 
-            bool trailAllowed = state.getBool("hitbox_trail") &&
-                (!state.getBool("hitbox_trail_death_only") || m_fields->m_playerDiedThisAttempt);
+            bool deathOnly = state.getBool("hitbox_trail_death_only");
+            bool trailAllowed = state.getBool("hitbox_trail") && (!deathOnly || m_fields->m_playerDiedThisAttempt);
 
-            if (trailAllowed) {
+            if (!trailAllowed) {
+                m_fields->m_hitboxHistory.clear();
+                m_fields->m_velHistory.clear();
+            } else {
                 m_fields->m_hitboxHistory.push_back(pRect);
                 m_fields->m_velHistory.push_back(pCenter);
                 size_t maxFrames = static_cast<size_t>(state.getFloat("hitbox_trail_len"));
