@@ -1,5 +1,6 @@
 #pragma once
 #include <Geode/Geode.hpp>
+#include <Geode/ui/Popup.hpp>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -30,7 +31,6 @@ public:
     std::unordered_map<std::string, bool> boolStates;
     std::unordered_map<std::string, float> floatStates;
 
-    // Live Telemetry State
     int currentDeaths = 0;
     int totalClicks = 0;
     int sessionAttempts = 0;
@@ -188,13 +188,15 @@ public:
     }
 };
 
-class VantaPopup : public geode::Popup<> {
+class VantaPopup : public geode::Popup {
 protected:
     std::string m_currentCategory = "Player";
     ScrollLayer* m_scrollLayer = nullptr;
     std::vector<CCMenuItemSpriteExtra*> m_tabButtons;
 
-    bool setup() override {
+    bool init() {
+        if (!Popup::init(440.f, 285.f)) return false;
+
         this->setTitle("VantaMenuv1 // kaizxfaq");
         auto winSize = m_mainLayer->getContentSize();
 
@@ -225,7 +227,7 @@ protected:
         m_scrollLayer->setPosition({listBg->getPositionX() - 145.f, listBg->getPositionY() - 105.f});
         m_mainLayer->addChild(m_scrollLayer);
 
-        auto countLabel = CCLabelBMFont::create("100 Modules Loaded | Multi-Platform v2.209", "chatFont.fnt");
+        auto countLabel = CCLabelBMFont::create("100 Modules Loaded | Multi-Platform v2.2091", "chatFont.fnt");
         countLabel->setScale(0.55f);
         countLabel->setOpacity(160);
         countLabel->setPosition({winSize.width / 2.f + 48.f, 16.f});
@@ -304,5 +306,4 @@ protected:
                 auto plusSpr = ButtonSprite::create("+", 20, true, "bigFont.fnt", "GJ_button_01.png", 20.f, 0.5f);
                 auto plusBtn = CCMenuItemSpriteExtra::create(plusSpr, this, menu_selector(VantaPopup::onSliderStep));
                 plusBtn->setID(feat.id + "|up");
-                plusBtn->setPosition({274.f, 0.f});
-               
+                plusB
