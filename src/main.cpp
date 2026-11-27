@@ -11,7 +11,7 @@ class $modify(VantaMainMenu, MenuLayer) {
         if (!MenuLayer::init()) return false;
         VantaState::get().initFeatures();
 
-        if (!VantaState::get().getBool("hide_menu_btn")) {
+        if (!VantaState::get().isMenuHidden()) {
             auto winSize = CCDirector::sharedDirector()->getWinSize();
             auto menu = CCMenu::create();
             menu->setPosition({35.f, winSize.height - 35.f});
@@ -42,7 +42,7 @@ class $modify(VantaPauseLayer, PauseLayer) {
         PauseLayer::customSetup();
         VantaState::get().initFeatures();
 
-        if (!VantaState::get().getBool("hide_menu_btn")) {
+        if (!VantaState::get().isMenuHidden()) {
             auto winSize = CCDirector::sharedDirector()->getWinSize();
 
             auto menu = CCMenu::create();
