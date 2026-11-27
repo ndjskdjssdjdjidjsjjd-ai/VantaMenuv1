@@ -3,12 +3,12 @@
 #include <Geode/ui/Popup.hpp>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/async.hpp>
+#include <asp/fs/Path.hpp>
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <cmath>
 #include <optional>
-#include <filesystem>
 #include "VantaState.hpp"
 
 using namespace geode::prelude;
@@ -32,7 +32,7 @@ protected:
     CCPoint m_lastDragScreenPos = {0.f, 0.f};
     bool m_draggingScroll = false;
     bool m_draggingWindow = false;
-    async::TaskHolder<Result<std::optional<std::filesystem::path>>> m_fileTaskHolder;
+    async::TaskHolder<Result<std::optional<asp::fs::Path>>> m_fileTaskHolder;
 
     bool init() override {
         if (!Popup::init(m_popupSize.width, m_popupSize.height)) return false;
@@ -276,14 +276,13 @@ protected:
             {"*.png", "*.jpg", "*.jpeg", "*.webp"}
         });
 
-        auto pickFuture = utils::file::pick(utils::file::PickMode::OpenFile, options);
         m_fileTaskHolder.spawn(
-            std::move(pickFuture),
-            [this](auto result) {
+            utils::file::pick(utils::file::PickMode::OpenFile, options),
+            [this](Result<std::optional<asp::fs::Path>> result) {
                 if (result.isOk()) {
                     auto optPath = result.unwrap();
                     if (optPath.has_value()) {
-                        std::string chosen = optPath.value().string();
+                        std::string chosen = optPath.value().toString();
                         auto& state = VantaState::get();
                         state.setCustomBgImagePath(chosen);
                         state.setBool("custom_bg_en", true);
