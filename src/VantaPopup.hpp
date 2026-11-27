@@ -14,7 +14,7 @@ protected:
     std::string m_currentCategory = "Player";
     CCLayer* m_contentLayer = nullptr;
     CCClippingNode* m_clipper = nullptr;
-    CCSize m_scrollSize = {290.f, 210.f};
+    CCSize m_scrollSize = {295.f, 215.f};
     CCPoint m_clipOrigin = {0.f, 0.f};
     float m_maxScrollY = 0.f;
     float m_scrollY = 0.f;
@@ -48,13 +48,12 @@ protected:
             tabMenu->addChild(btn);
         }
 
-        CCPoint listCenter = {winSize.width / 2.f + 48.f, winSize.height / 2.f - 10.f};
-        CCSize boxSize = {295.f, 215.f};
+        CCPoint listCenter = {winSize.width / 2.f + 50.f, winSize.height / 2.f - 10.f};
 
         auto listBg = CCScale9Sprite::create("square02b_001.png");
         listBg->setColor({0, 0, 0});
         listBg->setOpacity(110);
-        listBg->setContentSize(boxSize);
+        listBg->setContentSize(m_scrollSize);
         listBg->setPosition(listCenter);
         m_mainLayer->addChild(listBg);
 
@@ -81,27 +80,12 @@ protected:
         m_contentLayer->setContentSize(m_scrollSize);
         m_clipper->addChild(m_contentLayer);
 
-        auto scrollMenu = CCMenu::create();
-        scrollMenu->setPosition({listCenter.x + boxSize.width / 2.f + 12.f, listCenter.y});
-        scrollMenu->setZOrder(50);
-        m_mainLayer->addChild(scrollMenu);
-
-        auto upSpr = ButtonSprite::create("^", 16, true, "bigFont.fnt", "GJ_button_04.png", 18.f, 0.45f);
-        auto upBtn = CCMenuItemSpriteExtra::create(upSpr, this, menu_selector(VantaPopup::onScrollUp));
-        upBtn->setPosition({0.f, 45.f});
-        scrollMenu->addChild(upBtn);
-
-        auto dnSpr = ButtonSprite::create("v", 16, true, "bigFont.fnt", "GJ_button_04.png", 18.f, 0.45f);
-        auto dnBtn = CCMenuItemSpriteExtra::create(dnSpr, this, menu_selector(VantaPopup::onScrollDown));
-        dnBtn->setPosition({0.f, -45.f});
-        scrollMenu->addChild(dnBtn);
-
         auto countLabel = CCLabelBMFont::create(
-            "100+ Modules | Drag or Use ^/v | v2.2091", "chatFont.fnt"
+            "100+ Modules | Drag to Scroll | v2.2091", "chatFont.fnt"
         );
         countLabel->setScale(0.55f);
         countLabel->setOpacity(160);
-        countLabel->setPosition({winSize.width / 2.f + 48.f, 16.f});
+        countLabel->setPosition({winSize.width / 2.f + 50.f, 16.f});
         m_mainLayer->addChild(countLabel);
 
         this->setTouchEnabled(true);
@@ -113,6 +97,13 @@ protected:
     void onExit() override {
         CCTouchDispatcher::get()->removeDelegate(this);
         Popup::onExit();
+    }
+
+    void setLockedScrollY(float newScrollY) {
+        m_scrollY = std::clamp(newScrollY, 0.f, m_maxScrollY);
+        if (m_contentLayer) {
+            m_contentLayer->setPositionY(m_scrollY);
+        }
     }
 
     std::string formatSliderValue(const FeatureItem& feat, float val) {
@@ -148,8 +139,8 @@ protected:
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             float deltaY = local.y - m_lastTouchY;
             m_lastTouchY = local.y;
-            m_scrollY = std::clamp(m_scrollY + deltaY, -m_maxScrollY, 0.f);
-            m_contentLayer->setPositionY(m_scrollY);
+            // Dragging finger down (deltaY < 0) scrolls up toward 0.f; dragging up scrolls down toward m_maxScrollY
+            setLockedScrollY(m_scrollY - deltaY);
             return;
         }
         Popup::ccTouchMoved(touch, event);
@@ -170,21 +161,9 @@ protected:
         populateCategory(btn->getID());
     }
 
-    void onScrollUp(CCObject*) {
-        m_scrollY = std::min(0.f, m_scrollY - 76.f);
-        m_contentLayer->setPositionY(m_scrollY);
-    }
-
-    void onScrollDown(CCObject*) {
-        m_scrollY = std::max(-m_maxScrollY, m_scrollY + 76.f);
-        m_contentLayer->setPositionY(m_scrollY);
-    }
-
     void populateCategory(const std::string& category) {
         m_currentCategory = category;
         m_contentLayer->removeAllChildren();
-        m_scrollY = 0.f;
-        m_contentLayer->setPositionY(0.f);
 
         auto& state = VantaState::get();
         std::vector<FeatureItem> filtered;
@@ -201,6 +180,8 @@ protected:
         );
         m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
         m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
+
+        setLockedScrollY(0.f);
 
         float currentY = m_scrollSize.height - 22.f;
 
@@ -232,7 +213,7 @@ protected:
                 );
                 toggle->setID(feat.id);
                 toggle->toggle(state.getBool(feat.id));
-                toggle->setPosition({266.f, 0.f});
+                toggle->setPosition({270.f, 0.f});
                 rowMenu->addChild(toggle);
             } else {
                 float val = state.getFloat(feat.id);
@@ -240,7 +221,7 @@ protected:
                 auto valLbl = CCLabelBMFont::create(valStr.c_str(), "goldFont.fnt");
                 valLbl->setScale(feat.choices.empty() ? 0.4f : 0.32f);
                 valLbl->setID(feat.id + "_lbl");
-                valLbl->setPosition({228.f, 0.f});
+                valLbl->setPosition({232.f, 0.f});
                 row->addChild(valLbl);
 
                 auto minusSpr = ButtonSprite::create(
@@ -250,7 +231,7 @@ protected:
                     minusSpr, this, menu_selector(VantaPopup::onSliderStep)
                 );
                 minusBtn->setID(feat.id + "|down");
-                minusBtn->setPosition({184.f, 0.f});
+                minusBtn->setPosition({188.f, 0.f});
                 rowMenu->addChild(minusBtn);
 
                 auto plusSpr = ButtonSprite::create(
@@ -260,7 +241,7 @@ protected:
                     plusSpr, this, menu_selector(VantaPopup::onSliderStep)
                 );
                 plusBtn->setID(feat.id + "|up");
-                plusBtn->setPosition({272.f, 0.f});
+                plusBtn->setPosition({276.f, 0.f});
                 rowMenu->addChild(plusBtn);
             }
 
