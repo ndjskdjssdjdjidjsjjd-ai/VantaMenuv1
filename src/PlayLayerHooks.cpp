@@ -23,13 +23,14 @@ class $modify(VantaPlayLayer, PlayLayer) {
         std::vector<StartPosObject*> m_startPositions;
         std::deque<CCRect> m_hitboxHistory;
         std::deque<CCPoint> m_velHistory;
-        std::vector<Particle3D> m_bgParticles;
+        std::vector<AmbientParticle> m_bgParticles;
         int m_frameCounter = 0;
         float m_fpsTimer = 0.0f;
         int m_displayedFps = 0;
         float m_rainbowHue = 0.0f;
         float m_animTime = 0.0f;
         bool m_customTexApplied = false;
+        bool m_playerDiedThisAttempt = false;
     };
 
     void collectStartPositions() {
@@ -48,12 +49,23 @@ class $modify(VantaPlayLayer, PlayLayer) {
         );
     }
 
+    ccColor3B blendColor(ccColor3B baseCol, ccColor3B targetCol, float mix) {
+        float t = std::clamp(mix, 0.f, 1.f);
+        return {
+            static_cast<GLubyte>(baseCol.r * (1.f - t) + targetCol.r * t),
+            static_cast<GLubyte>(baseCol.g * (1.f - t) + targetCol.g * t),
+            static_cast<GLubyte>(baseCol.b * (1.f - t) + targetCol.b * t)
+        };
+    }
+
     void applyBuildingCustomization() {
         auto& state = VantaState::get();
         float bOp = state.getFloat("building_opacity");
-        bool tintEn = state.getBool("building_tint_en");
         bool simDeco = state.getBool("hide_deco_buildings");
         bool noGlow = state.getBool("no_glow");
+        int colIdx = static_cast<int>(std::round(state.getFloat("building_color")));
+        float colorMix = state.getFloat("building_color_mix");
+        ccColor3B customCol = state.getBuildingColorRGB();
 
         if (!m_objects) return;
         GLubyte alphaByte = static_cast<GLubyte>(std::clamp(bOp, 0.05f, 1.0f) * 255.f);
@@ -69,8 +81,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 gameObj->setOpacity(alphaByte);
             }
 
-            if (tintEn && isSolid) {
-                gameObj->setColor({195, 220, 255});
+            if (colIdx > 0 && colorMix > 0.01f) {
+                ccColor3B blended = blendColor({255, 255, 255}, customCol, colorMix);
+                gameObj->setColor(blended);
             }
 
             if (noGlow) {
@@ -92,6 +105,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         state.noclipDeaths = 0.0f;
         state.noclipFrames = 0.0f;
         state.selectedStartPos = -1;
+        m_fields->m_playerDiedThisAttempt = false;
 
         collectStartPositions();
         applyBuildingCustomization();
@@ -199,6 +213,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         auto& state = VantaState::get();
+        m_fields->m_playerDiedThisAttempt = true;
 
         if (state.getBool("noclip")) {
             state.noclipDeaths += 1.0f;
@@ -218,6 +233,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         state.sessionAttempts++;
         state.noclipDeaths = 0.0f;
         state.noclipFrames = 0.0f;
+        m_fields->m_playerDiedThisAttempt = false;
         m_fields->m_hitboxHistory.clear();
         m_fields->m_velHistory.clear();
 
@@ -289,7 +305,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         CCPoint camPos = m_player1 ? m_player1->getPosition() : CCPoint{0.f, 0.f};
-        Bg3DRenderer::render3DBackground(
+        Bg3DRenderer::renderBackground(
             m_fields->m_bg3DNode,
             m_fields->m_customBgSprite,
             winSize,
@@ -303,7 +319,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
             CCRect pRect = m_player1->getObjectRect();
             CCPoint pCenter = {pRect.getMidX(), pRect.getMidY()};
 
-            if (state.getBool("hitbox_trail")) {
+            bool trailAllowed = state.getBool("hitbox_trail") &&
+                (!state.getBool("hitbox_trail_death_only") || m_fields->m_playerDiedThisAttempt);
+
+            if (trailAllowed) {
                 m_fields->m_hitboxHistory.push_back(pRect);
                 m_fields->m_velHistory.push_back(pCenter);
                 size_t maxFrames = static_cast<size_t>(state.getFloat("hitbox_trail_len"));
@@ -314,11 +333,12 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     m_fields->m_velHistory.pop_front();
                 }
 
+                ccColor4F trailCol = state.getHitboxTrailColor();
                 size_t totalHist = m_fields->m_hitboxHistory.size();
                 for (size_t idx = 0; idx < totalHist; ++idx) {
                     const auto& rect = m_fields->m_hitboxHistory[idx];
                     float ageRatio = static_cast<float>(idx + 1) / static_cast<float>(std::max<size_t>(1, totalHist));
-                    float alpha = 0.06f + 0.34f * ageRatio;
+                    float alpha = (0.08f + 0.36f * ageRatio) * trailCol.a;
 
                     if (idx % 6 == 0 || idx + 1 == totalHist) {
                         CCPoint verts[4] = {
@@ -329,15 +349,15 @@ class $modify(VantaPlayLayer, PlayLayer) {
                         };
                         m_fields->m_hitboxNode->drawPolygon(
                             verts, 4,
-                            {1.f, 0.25f, 0.05f, alpha * 0.25f},
-                            0.65f,
-                            {1.f, 0.45f, 0.10f, alpha}
+                            {trailCol.r, trailCol.g, trailCol.b, alpha * 0.28f},
+                            0.7f,
+                            {trailCol.r, trailCol.g, trailCol.b, alpha}
                         );
                     } else {
                         m_fields->m_hitboxNode->drawDot(
                             {rect.getMidX(), rect.getMidY()},
                             1.8f,
-                            {0.2f, 0.9f, 1.0f, alpha}
+                            {trailCol.r, trailCol.g, trailCol.b, alpha}
                         );
                     }
                 }
@@ -347,8 +367,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
                         m_fields->m_hitboxNode->drawSegment(
                             m_fields->m_velHistory[i - 1],
                             m_fields->m_velHistory[i],
-                            0.9f,
-                            {0.2f, 0.95f, 1.0f, 0.65f}
+                            0.95f,
+                            {trailCol.r, trailCol.g, trailCol.b, 0.72f}
                         );
                     }
                 }
