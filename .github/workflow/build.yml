@@ -1,0 +1,41 @@
+name: Build Geode Mod (All Platforms)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - Win64
+          - MacOS
+          - Android32
+          - Android64
+          - iOS
+
+    runs-on: ${{ matrix.target == 'MacOS' || matrix.target == 'iOS' && 'macos-latest' || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build for ${{ matrix.target }}
+        uses: geode-sdk/build-geode-mod@main
+        id: build
+        with:
+          sdk: v6.0.0
+          target: ${{ matrix.target }}
+          combine: true
+
+      - name: Upload ${{ matrix.target }} .geode Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VantaMenuv1-${{ matrix.target }}
+          path: ${{ steps.build.outputs.build-output }}
+          
