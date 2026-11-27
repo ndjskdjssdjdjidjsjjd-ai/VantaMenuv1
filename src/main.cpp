@@ -13,15 +13,21 @@ class $modify(VantaMainMenu, MenuLayer) {
         if (!MenuLayer::init()) return false;
         VantaState::get().initFeatures();
 
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
-        auto menu = CCMenu::create();
-        menu->setPosition({35.f, winSize.height - 35.f});
-        menu->setID("vanta-main-menu");
+        if (!VantaState::get().getBool("hide_menu_btn")) {
+            auto winSize = CCDirector::sharedDirector()->getWinSize();
+            auto menu = CCMenu::create();
+            menu->setPosition({35.f, winSize.height - 35.f});
+            menu->setID("vanta-main-menu");
 
-        auto spr = ButtonSprite::create("Vanta", 45, true, "goldFont.fnt", "GJ_button_05.png", 28.f, 0.6f);
-        auto btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(VantaMainMenu::onOpenVanta));
-        menu->addChild(btn);
-        this->addChild(menu, 100);
+            auto spr = ButtonSprite::create(
+                "Vanta", 45, true, "goldFont.fnt", "GJ_button_05.png", 28.f, 0.6f
+            );
+            auto btn = CCMenuItemSpriteExtra::create(
+                spr, this, menu_selector(VantaMainMenu::onOpenVanta)
+            );
+            menu->addChild(btn);
+            this->addChild(menu, 100);
+        }
 
         return true;
     }
@@ -36,14 +42,22 @@ class $modify(VantaMainMenu, MenuLayer) {
 class $modify(VantaPauseLayer, PauseLayer) {
     void customSetup() {
         PauseLayer::customSetup();
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        VantaState::get().initFeatures();
 
-        auto menu = CCMenu::create();
-        menu->setPosition({45.f, winSize.height - 35.f});
-        auto spr = ButtonSprite::create("Vanta", 45, true, "goldFont.fnt", "GJ_button_05.png", 28.f, 0.6f);
-        auto btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(VantaPauseLayer::onOpenVantaPause));
-        menu->addChild(btn);
-        this->addChild(menu, 100);
+        if (!VantaState::get().getBool("hide_menu_btn")) {
+            auto winSize = CCDirector::sharedDirector()->getWinSize();
+
+            auto menu = CCMenu::create();
+            menu->setPosition({45.f, winSize.height - 35.f});
+            auto spr = ButtonSprite::create(
+                "Vanta", 45, true, "goldFont.fnt", "GJ_button_05.png", 28.f, 0.6f
+            );
+            auto btn = CCMenuItemSpriteExtra::create(
+                spr, this, menu_selector(VantaPauseLayer::onOpenVantaPause)
+            );
+            menu->addChild(btn);
+            this->addChild(menu, 100);
+        }
     }
 
     void onOpenVantaPause(CCObject*) {
