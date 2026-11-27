@@ -148,7 +148,7 @@ protected:
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             float deltaY = local.y - m_lastTouchY;
             m_lastTouchY = local.y;
-            m_scrollY = std::clamp(m_scrollY + deltaY, 0.f, m_maxScrollY);
+            m_scrollY = std::clamp(m_scrollY + deltaY, -m_maxScrollY, 0.f);
             m_contentLayer->setPositionY(m_scrollY);
             return;
         }
@@ -171,12 +171,12 @@ protected:
     }
 
     void onScrollUp(CCObject*) {
-        m_scrollY = std::max(0.f, m_scrollY - 76.f);
+        m_scrollY = std::min(0.f, m_scrollY - 76.f);
         m_contentLayer->setPositionY(m_scrollY);
     }
 
     void onScrollDown(CCObject*) {
-        m_scrollY = std::min(m_maxScrollY, m_scrollY + 76.f);
+        m_scrollY = std::max(-m_maxScrollY, m_scrollY + 76.f);
         m_contentLayer->setPositionY(m_scrollY);
     }
 
@@ -202,7 +202,7 @@ protected:
         m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
         m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
 
-        float currentY = totalHeight - 22.f;
+        float currentY = m_scrollSize.height - 22.f;
 
         for (const auto& feat : filtered) {
             auto row = CCNode::create();
