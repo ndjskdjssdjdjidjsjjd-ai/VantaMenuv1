@@ -73,8 +73,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 gameObj->setColor({195, 220, 255});
             }
 
-            if (noGlow && gameObj->m_hasGlow) {
-                gameObj->m_hasGlow = false;
+            if (noGlow) {
+                gameObj->m_hasNoGlow = true;
             }
         }
     }
@@ -98,7 +98,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // 3D Animated Background Layer
         m_fields->m_bg3DNode = CCDrawNode::create();
         m_fields->m_bg3DNode->setZOrder(-10);
         this->addChild(m_fields->m_bg3DNode);
@@ -108,27 +107,23 @@ class $modify(VantaPlayLayer, PlayLayer) {
         m_fields->m_customBgSprite->setZOrder(-11);
         this->addChild(m_fields->m_customBgSprite);
 
-        // HUD Telemetry Label
         m_fields->m_hudLabel = CCLabelBMFont::create("", "bigFont.fnt");
         m_fields->m_hudLabel->setAnchorPoint({0.f, 1.f});
         m_fields->m_hudLabel->setPosition({12.f, winSize.height - 10.f});
         m_fields->m_hudLabel->setZOrder(500);
         this->addChild(m_fields->m_hudLabel);
 
-        // Cheat Indicator Dot
         m_fields->m_cheatDot = CCDrawNode::create();
         m_fields->m_cheatDot->setPosition({winSize.width - 16.f, winSize.height - 16.f});
         m_fields->m_cheatDot->setZOrder(501);
         this->addChild(m_fields->m_cheatDot);
 
-        // Analytical Hitbox & Trail Layer
         m_fields->m_hitboxNode = CCDrawNode::create();
         m_fields->m_hitboxNode->setZOrder(450);
         if (m_objectLayer) {
             m_objectLayer->addChild(m_fields->m_hitboxNode);
         }
 
-        // StartPos Switcher Controls
         m_fields->m_startPosMenu = CCMenu::create();
         m_fields->m_startPosMenu->setPosition({winSize.width * 0.5f, 34.f});
         m_fields->m_startPosMenu->setZOrder(510);
@@ -175,9 +170,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
         if (total > 0 && state.selectedStartPos >= 0 && state.selectedStartPos < total && m_player1) {
             auto sp = m_fields->m_startPositions[state.selectedStartPos];
             m_player1->setPosition(sp->getPosition());
-            if (state.getBool("smart_startpos") && sp->m_startSettings) {
-                m_player1->m_playerSpeed = sp->m_startSettings->m_speed;
-            }
         }
         updateStartPosLabel();
         this->resetLevel();
@@ -261,7 +253,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             m_fields->m_startPosMenu->setVisible(state.getBool("startpos_switcher"));
         }
 
-        // Apply custom texture to player sprite if requested
         if (state.getBool("custom_texture_en") && m_player1 && !m_fields->m_customTexApplied) {
             std::string texPath = state.getActiveCustomTexturePath();
             auto tex = CCTextureCache::sharedTextureCache()->addImage(texPath.c_str(), false);
@@ -273,7 +264,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             m_fields->m_customTexApplied = false;
         }
 
-        // FPS calculation
         m_fields->m_frameCounter++;
         m_fields->m_fpsTimer += rawDt;
         if (m_fields->m_fpsTimer >= 0.5f) {
@@ -286,7 +276,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             state.noclipFrames += 1.0f;
         }
 
-        // RGB Rainbow Icon
         if (state.getBool("rainbow_icon") && m_player1) {
             m_fields->m_rainbowHue += dt * 120.0f * state.getFloat("rainbow_speed");
             if (m_fields->m_rainbowHue > 360.0f) m_fields->m_rainbowHue -= 360.0f;
@@ -298,7 +287,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             m_player1->setColor(col);
         }
 
-        // Animated 3D Background Rendering
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         CCPoint camPos = m_player1 ? m_player1->getPosition() : CCPoint{0.f, 0.f};
         Bg3DRenderer::render3DBackground(
@@ -310,7 +298,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             m_fields->m_bgParticles
         );
 
-        // Analytical Hitboxes & Hitbox Trail
         m_fields->m_hitboxNode->clear();
         if ((state.getBool("show_hitboxes") || state.getBool("hitbox_trail")) && m_player1) {
             CCRect pRect = m_player1->getObjectRect();
@@ -333,7 +320,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     float ageRatio = static_cast<float>(idx + 1) / static_cast<float>(std::max<size_t>(1, totalHist));
                     float alpha = 0.06f + 0.34f * ageRatio;
 
-                    // Every 6th frame draws a full analytical box; intermediate frames draw center/edge markers
                     if (idx % 6 == 0 || idx + 1 == totalHist) {
                         CCPoint verts[4] = {
                             {rect.getMinX(), rect.getMinY()},
@@ -356,7 +342,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     }
                 }
 
-                // Trajectory line connecting player centers
                 if (m_fields->m_velHistory.size() >= 2) {
                     for (size_t i = 1; i < m_fields->m_velHistory.size(); ++i) {
                         m_fields->m_hitboxNode->drawSegment(
@@ -384,11 +369,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     {1.f, 0.1f, 0.1f, 1.0f}
                 );
 
-                // Velocity vector arrow from player center
-                CCPoint velEnd = {
-                    pCenter.x + (m_player1->m_playerSpeed * 22.f),
-                    pCenter.y + (m_player1->m_yVelocity * 4.5f)
-                };
+                float velX = static_cast<float>(m_player1->m_playerSpeed) * 22.f;
+                float velY = static_cast<float>(m_player1->m_yVelocity) * 4.5f;
+                CCPoint velEnd = CCPoint{pCenter.x + velX, pCenter.y + velY};
                 m_fields->m_hitboxNode->drawSegment(pCenter, velEnd, 1.4f, {0.1f, 1.f, 0.45f, 0.95f});
                 m_fields->m_hitboxNode->drawDot(velEnd, 3.0f, {0.1f, 1.f, 0.45f, 0.95f});
             }
@@ -401,7 +384,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         auto& state = VantaState::get();
         bool hasPlayer = (m_player1 != nullptr);
         CCPoint pos = hasPlayer ? m_player1->getPosition() : CCPoint{0.f, 0.f};
-        float vel = hasPlayer ? m_player1->m_yVelocity : 0.f;
+        float vel = hasPlayer ? static_cast<float>(m_player1->m_yVelocity) : 0.f;
 
         std::string hudText = HudManager::buildHudString(
             m_fields->m_displayedFps,
