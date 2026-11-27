@@ -120,7 +120,7 @@ protected:
         m_clipper->addChild(m_contentLayer);
 
         auto footerLbl = CCLabelBMFont::create(
-            "Drag Top Bar to Move | Drag List to Scroll | v2.2091", "chatFont.fnt"
+            "Drag Menu to Move | Drag List to Scroll | v2.2091", "chatFont.fnt"
         );
         footerLbl->setScale(0.50f);
         footerLbl->setOpacity(175);
@@ -158,8 +158,8 @@ protected:
 
     void clampPopupPosition() {
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        float halfW = m_popupSize.width * 0.45f;
-        float halfH = m_popupSize.height * 0.45f;
+        float halfW = m_popupSize.width * 0.40f;
+        float halfH = m_popupSize.height * 0.40f;
         CCPoint pos = this->getPosition();
         pos.x = std::clamp(pos.x, halfW, std::max(halfW, winSize.width - halfW));
         pos.y = std::clamp(pos.y, halfH, std::max(halfH, winSize.height - halfH));
@@ -192,45 +192,33 @@ protected:
                local.y <= m_clipOrigin.y + m_scrollSize.height;
     }
 
-    bool isInsideDragHeader(CCTouch* touch) const {
-        if (!m_mainLayer) return false;
-        CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
-        auto winSize = m_mainLayer->getContentSize();
-        return local.x >= 40.f &&
-               local.x <= winSize.width - 40.f &&
-               local.y >= winSize.height - 42.f &&
-               local.y <= winSize.height - 4.f;
-    }
-
     bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
-        if (isInsideDragHeader(touch)) {
-            m_draggingWindow = true;
-            m_lastDragScreenPos = touch->getLocation();
-            return true;
-        }
         if (isInsideScrollArea(touch) && m_maxScrollY > 0.f) {
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             m_draggingScroll = true;
             m_lastTouchY = local.y;
             return true;
         }
-        return Popup::ccTouchBegan(touch, event);
+        m_draggingWindow = true;
+        m_lastDragScreenPos = touch->getLocation();
+        Popup::ccTouchBegan(touch, event);
+        return true;
     }
 
     void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
+        if (m_draggingScroll) {
+            CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
+            float deltaY = local.y - m_lastTouchY;
+            m_lastTouchY = local.y;
+            applyScrollLock(m_scrollY + deltaY);
+            return;
+        }
         if (m_draggingWindow) {
             CCPoint curScreen = touch->getLocation();
             CCPoint delta = curScreen - m_lastDragScreenPos;
             m_lastDragScreenPos = curScreen;
             this->setPosition(this->getPosition() + delta);
             clampPopupPosition();
-            return;
-        }
-        if (m_draggingScroll) {
-            CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
-            float deltaY = local.y - m_lastTouchY;
-            m_lastTouchY = local.y;
-            applyScrollLock(m_scrollY + deltaY);
             return;
         }
         Popup::ccTouchMoved(touch, event);
@@ -272,7 +260,7 @@ protected:
     void onChooseBackgroundPhoto(CCObject*) {
         utils::file::FilePickOptions options;
         options.filters.push_back({
-            "Photo Files",
+            "Animation Image Files",
             {"*.png", "*.jpg", "*.jpeg", "*.webp"}
         });
 
@@ -289,7 +277,7 @@ protected:
                         if (m_currentCategory == "Background") {
                             populateCategory("Background");
                         }
-                        FLAlertLayer::create("Custom Photo Set", chosen.c_str(), "OK")->show();
+                        FLAlertLayer::create("Animation Image Set", chosen.c_str(), "OK")->show();
                     }
                 }
             }
@@ -309,52 +297,15 @@ protected:
             }
         }
 
-        bool isBgTab = (category == "Background");
-        float extraHeader = isBgTab ? 42.f : 0.f;
         float itemHeight = 38.f;
         float totalHeight = std::max(
             m_scrollSize.height,
-            extraHeader + static_cast<float>(filtered.size()) * itemHeight + 14.f
+            static_cast<float>(filtered.size()) * itemHeight + 14.f
         );
         m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
         m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
 
         float currentY = m_scrollSize.height - 20.f;
-
-        if (isBgTab) {
-            auto pickerRow = CCNode::create();
-            pickerRow->setPosition({0.f, currentY});
-            m_contentLayer->addChild(pickerRow);
-
-            std::string pathPreview = state.customBgImagePath.empty()
-                ? "No photo chosen yet"
-                : state.customBgImagePath;
-            if (pathPreview.size() > 30) {
-                pathPreview = "..." + pathPreview.substr(pathPreview.size() - 27);
-            }
-
-            m_bgFileLabel = CCLabelBMFont::create(pathPreview.c_str(), "chatFont.fnt");
-            m_bgFileLabel->setScale(0.42f);
-            m_bgFileLabel->setColor({145, 225, 255});
-            m_bgFileLabel->setAnchorPoint({0.f, 0.5f});
-            m_bgFileLabel->setPosition({8.f, 0.f});
-            pickerRow->addChild(m_bgFileLabel);
-
-            auto rowMenu = CCMenu::create();
-            rowMenu->setPosition({0.f, 0.f});
-            pickerRow->addChild(rowMenu);
-
-            auto pickSpr = ButtonSprite::create(
-                "Choose File", 74, true, "bigFont.fnt", "GJ_button_01.png", 22.f, 0.38f
-            );
-            auto pickBtn = CCMenuItemSpriteExtra::create(
-                pickSpr, this, menu_selector(VantaPopup::onChooseBackgroundPhoto)
-            );
-            pickBtn->setPosition({252.f, 0.f});
-            rowMenu->addChild(pickBtn);
-
-            currentY -= 38.f;
-        }
 
         for (const auto& feat : filtered) {
             auto row = CCNode::create();
@@ -378,13 +329,24 @@ protected:
             rowMenu->setPosition({0.f, 0.f});
             row->addChild(rowMenu);
 
+            if (feat.id == "custom_bg_en") {
+                auto pickSpr = ButtonSprite::create(
+                    "Choose File", 64, true, "bigFont.fnt", "GJ_button_01.png", 20.f, 0.34f
+                );
+                auto pickBtn = CCMenuItemSpriteExtra::create(
+                    pickSpr, this, menu_selector(VantaPopup::onChooseBackgroundPhoto)
+                );
+                pickBtn->setPosition({222.f, 0.f});
+                rowMenu->addChild(pickBtn);
+            }
+
             if (!feat.isSlider) {
                 auto toggle = CCMenuItemToggler::createWithStandardSprites(
                     this, menu_selector(VantaPopup::onToggleFeature), 0.6f
                 );
                 toggle->setID(feat.id);
                 toggle->toggle(state.getBool(feat.id));
-                toggle->setPosition({270.f, 0.f});
+                toggle->setPosition({272.f, 0.f});
                 rowMenu->addChild(toggle);
             } else {
                 float val = state.getFloat(feat.id);
