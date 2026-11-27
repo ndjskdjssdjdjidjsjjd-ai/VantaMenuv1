@@ -12,9 +12,10 @@ public:
         CCSprite* customSprite,
         CCSize winSize,
         CCPoint camPos,
-        float t,
+        float timeSec,
         const std::string& imagePath,
-        float opacity
+        float opacity,
+        float motionIntensity
     ) {
         if (!customSprite) return;
 
@@ -35,15 +36,18 @@ public:
             static_cast<GLubyte>(std::clamp(opacity, 0.05f, 1.0f) * 255.f)
         );
 
-        float px = winSize.width * 0.5f - (camPos.x * 0.02f) + std::sin(t * 0.7f) * 6.f;
-        float py = winSize.height * 0.5f - (camPos.y * 0.015f) + std::cos(t * 0.5f) * 4.f;
-        customSprite->setPosition({px, py});
+        float amp = std::clamp(motionIntensity, 0.1f, 3.0f);
+        // Automatic photo animation: smooth breathing scale + gentle Ken Burns pan/drift
+        float autoZoom = 1.14f + 0.045f * amp * std::sin(timeSec * 0.65f);
+        float driftX = std::sin(timeSec * 0.45f) * 18.f * amp - (camPos.x * 0.015f);
+        float driftY = std::cos(timeSec * 0.38f) * 12.f * amp - (camPos.y * 0.01f);
+
+        customSprite->setPosition({winSize.width * 0.5f + driftX, winSize.height * 0.5f + driftY});
 
         auto texSize = tex->getContentSize();
         if (texSize.width > 0.f && texSize.height > 0.f) {
-            float scaleX = (winSize.width * 1.12f) / texSize.width;
-            float scaleY = (winSize.height * 1.12f) / texSize.height;
-            customSprite->setScale(std::max(scaleX, scaleY));
+            float coverScale = std::max(winSize.width / texSize.width, winSize.height / texSize.height);
+            customSprite->setScale(coverScale * autoZoom);
         }
     }
 };
