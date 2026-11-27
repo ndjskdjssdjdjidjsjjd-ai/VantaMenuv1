@@ -81,7 +81,7 @@ protected:
         m_clipper->addChild(m_contentLayer);
 
         auto countLabel = CCLabelBMFont::create(
-            "100+ Modules | Drag to Scroll | v2.2091", "chatFont.fnt"
+            "100+ Modules | Drag Up/Down | v2.2091", "chatFont.fnt"
         );
         countLabel->setScale(0.55f);
         countLabel->setOpacity(160);
@@ -89,44 +89,39 @@ protected:
         m_mainLayer->addChild(countLabel);
 
         this->setTouchEnabled(true);
-        CCTouchDispatcher::get()->addTargetedDelegate(this, -500, false);
+        this->setTouchMode(kCCTouchesOneByOne);
         populateCategory("Player");
         return true;
     }
 
-    void onExit() override {
-        CCTouchDispatcher::get()->removeDelegate(this);
-        Popup::onExit();
-    }
+    void applyScrollLock(float targetY) {
+        if (m_maxScrollY <= 0.f) {
+            m_scrollY = 0.f;
+        } else if (targetY < 0.f) {
+            m_scrollY = 0.f;
+        } else if (targetY > m_maxScrollY) {
+            m_scrollY = m_maxScrollY;
+        } else {
+            m_scrollY = targetY;
+        }
 
-    void setLockedScrollY(float newScrollY) {
-        m_scrollY = std::clamp(newScrollY, 0.f, m_maxScrollY);
         if (m_contentLayer) {
             m_contentLayer->setPositionY(m_scrollY);
         }
     }
 
-    std::string formatSliderValue(const FeatureItem& feat, float val) {
-        if (!feat.choices.empty()) {
-            int idx = std::clamp(
-                static_cast<int>(std::round(val)),
-                0,
-                static_cast<int>(feat.choices.size()) - 1
-            );
-            return feat.choices[idx];
-        }
-        return fmt::format("{:.2f}", val);
+    bool isInsideScrollArea(CCTouch* touch) const {
+        if (!m_mainLayer) return false;
+        CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
+        return local.x >= m_clipOrigin.x &&
+               local.x <= m_clipOrigin.x + m_scrollSize.width &&
+               local.y >= m_clipOrigin.y &&
+               local.y <= m_clipOrigin.y + m_scrollSize.height;
     }
 
     bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
-        CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
-        CCRect scrollRect(
-            m_clipOrigin.x,
-            m_clipOrigin.y,
-            m_scrollSize.width,
-            m_scrollSize.height
-        );
-        if (scrollRect.containsPoint(local) && m_maxScrollY > 0.f) {
+        if (isInsideScrollArea(touch) && m_maxScrollY > 0.f) {
+            CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             m_draggingScroll = true;
             m_lastTouchY = local.y;
             return true;
@@ -139,8 +134,9 @@ protected:
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             float deltaY = local.y - m_lastTouchY;
             m_lastTouchY = local.y;
-            // Dragging finger down (deltaY < 0) scrolls up toward 0.f; dragging up scrolls down toward m_maxScrollY
-            setLockedScrollY(m_scrollY - deltaY);
+            // Finger moving down (deltaY < 0) decreases m_scrollY -> scrolls back up toward top (0.f)
+            // Finger moving up (deltaY > 0) increases m_scrollY -> scrolls down toward bottom (m_maxScrollY)
+            applyScrollLock(m_scrollY + deltaY);
             return;
         }
         Popup::ccTouchMoved(touch, event);
@@ -154,6 +150,18 @@ protected:
     void ccTouchCancelled(CCTouch* touch, CCEvent* event) override {
         m_draggingScroll = false;
         Popup::ccTouchCancelled(touch, event);
+    }
+
+    std::string formatSliderValue(const FeatureItem& feat, float val) {
+        if (!feat.choices.empty()) {
+            int idx = std::clamp(
+                static_cast<int>(std::round(val)),
+                0,
+                static_cast<int>(feat.choices.size()) - 1
+            );
+            return feat.choices[idx];
+        }
+        return fmt::format("{:.2f}", val);
     }
 
     void onSelectTab(CCObject* sender) {
@@ -181,7 +189,7 @@ protected:
         m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
         m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
 
-        setLockedScrollY(0.f);
+        applyScrollLock(0.f);
 
         float currentY = m_scrollSize.height - 22.f;
 
