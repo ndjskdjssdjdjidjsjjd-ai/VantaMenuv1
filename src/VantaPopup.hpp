@@ -1,6 +1,7 @@
 #pragma once
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
+#include <Geode/utils/file.hpp>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -20,6 +21,7 @@ protected:
     float m_scrollY = 0.f;
     float m_lastTouchY = 0.f;
     bool m_draggingScroll = false;
+    EventListener<utils::file::PickResult>* m_pickListener = nullptr;
 
     bool init() override {
         if (!Popup::init(440.f, 285.f)) return false;
@@ -47,6 +49,19 @@ protected:
             btn->setPosition({0.f, startY - (static_cast<float>(i) * 34.f)});
             tabMenu->addChild(btn);
         }
+
+        // File picker button for Custom Image background
+        auto pickSpr = ButtonSprite::create(
+            "Pick BG Img", 82, true, "bigFont.fnt", "GJ_button_01.png", 22.f, 0.42f
+        );
+        auto pickBtn = CCMenuItemSpriteExtra::create(
+            pickSpr, this, menu_selector(VantaPopup::onPickBackgroundImage)
+        );
+        pickBtn->setPosition({58.f, 18.f});
+        auto utilMenu = CCMenu::create();
+        utilMenu->setPosition({0.f, 0.f});
+        utilMenu->addChild(pickBtn);
+        m_mainLayer->addChild(utilMenu);
 
         CCPoint listCenter = {winSize.width / 2.f + 50.f, winSize.height / 2.f - 10.f};
 
@@ -94,6 +109,37 @@ protected:
         return true;
     }
 
+    void onPickBackgroundImage(CCObject*) {
+        utils::file::FilePickOptions options;
+        options.filters.push_back({
+            "Image Files",
+            {"*.png", "*.jpg", "*.jpeg", "*.webp"}
+        });
+
+        m_pickListener = new EventListener<utils::file::PickResult>();
+        m_pickListener->bind([this](utils::file::PickResult* event) {
+            if (auto picked = event->getValue()) {
+                std::string chosen = picked->string();
+                VantaState::get().setCustomBgImagePath(chosen);
+                // Switch theme index to "Custom Image" (index 5)
+                auto& state = VantaState::get();
+                state.setFloat("bg_theme", 5.f);
+                for (const auto& f : state.features) {
+                    if (f.id == "bg_theme") {
+                        if (auto lbl = typeinfo_cast<CCLabelBMFont*>(
+                            m_contentLayer->getChildByIDRecursive("bg_theme_lbl")
+                        )) {
+                            lbl->setString(formatSliderValue(f, 5.f).c_str());
+                        }
+                        break;
+                    }
+                }
+                FLAlertLayer::create("Custom BG Selected", chosen.c_str(), "OK")->show();
+            }
+        });
+        m_pickListener->setFilter(utils::file::pick(options));
+    }
+
     void applyScrollLock(float targetY) {
         if (m_maxScrollY <= 0.f) {
             m_scrollY = 0.f;
@@ -108,6 +154,8 @@ protected:
         if (m_contentLayer) {
             m_contentLayer->setPositionY(m_scrollY);
         }
+        // Lock this tab's current scroll position
+        VantaState::get().savedTabScrollY[m_currentCategory] = m_scrollY;
     }
 
     bool isInsideScrollArea(CCTouch* touch) const {
@@ -134,8 +182,6 @@ protected:
             CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
             float deltaY = local.y - m_lastTouchY;
             m_lastTouchY = local.y;
-            // Finger moving down (deltaY < 0) decreases m_scrollY -> scrolls back up toward top (0.f)
-            // Finger moving up (deltaY > 0) increases m_scrollY -> scrolls down toward bottom (m_maxScrollY)
             applyScrollLock(m_scrollY + deltaY);
             return;
         }
@@ -165,6 +211,8 @@ protected:
     }
 
     void onSelectTab(CCObject* sender) {
+        // Lock current tab's scroll before leaving
+        VantaState::get().savedTabScrollY[m_currentCategory] = m_scrollY;
         auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
         populateCategory(btn->getID());
     }
@@ -188,8 +236,6 @@ protected:
         );
         m_maxScrollY = std::max(0.f, totalHeight - m_scrollSize.height);
         m_contentLayer->setContentSize({m_scrollSize.width, totalHeight});
-
-        applyScrollLock(0.f);
 
         float currentY = m_scrollSize.height - 22.f;
 
@@ -255,6 +301,14 @@ protected:
 
             currentY -= itemHeight;
         }
+
+        // Restore locked scroll position for this category when returning
+        float restoredY = 0.f;
+        auto it = state.savedTabScrollY.find(category);
+        if (it != state.savedTabScrollY.end()) {
+            restoredY = it->second;
+        }
+        applyScrollLock(restoredY);
     }
 
     void onToggleFeature(CCObject* sender) {
