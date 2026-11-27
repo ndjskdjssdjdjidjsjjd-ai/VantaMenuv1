@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cmath>
 #include "VantaState.hpp"
 
 using namespace geode::prelude;
@@ -12,9 +13,13 @@ class VantaPopup : public geode::Popup {
 protected:
     std::string m_currentCategory = "Player";
     CCLayer* m_contentLayer = nullptr;
+    CCClippingNode* m_clipper = nullptr;
     CCSize m_scrollSize = {290.f, 210.f};
+    CCPoint m_clipOrigin = {0.f, 0.f};
     float m_maxScrollY = 0.f;
     float m_scrollY = 0.f;
+    float m_lastTouchY = 0.f;
+    bool m_draggingScroll = false;
 
     bool init() {
         if (!Popup::init(440.f, 285.f)) return false;
@@ -62,19 +67,21 @@ protected:
         };
         stencil->drawPolygon(rectVerts, 4, {1.f, 1.f, 1.f, 1.f}, 0.f, {0.f, 0.f, 0.f, 0.f});
 
-        auto clipper = CCClippingNode::create(stencil);
-        clipper->setContentSize(m_scrollSize);
-        clipper->setPosition({
+        m_clipOrigin = {
             listCenter.x - m_scrollSize.width / 2.f,
             listCenter.y - m_scrollSize.height / 2.f
-        });
-        m_mainLayer->addChild(clipper);
+        };
+
+        m_clipper = CCClippingNode::create(stencil);
+        m_clipper->setContentSize(m_scrollSize);
+        m_clipper->setPosition(m_clipOrigin);
+        m_mainLayer->addChild(m_clipper);
 
         m_contentLayer = CCLayer::create();
         m_contentLayer->setContentSize(m_scrollSize);
-        clipper->addChild(m_contentLayer);
+        m_clipper->addChild(m_contentLayer);
 
-        // Quick scroll up/down buttons on the right edge for easy mobile/mouse scrolling
+        // Up/Down buttons for quick step scrolling
         auto scrollMenu = CCMenu::create();
         scrollMenu->setPosition({listCenter.x + boxSize.width / 2.f + 12.f, listCenter.y});
         m_mainLayer->addChild(scrollMenu);
@@ -90,15 +97,63 @@ protected:
         scrollMenu->addChild(dnBtn);
 
         auto countLabel = CCLabelBMFont::create(
-            "100 Modules + Settings | Multi-Platform v2.2091", "chatFont.fnt"
+            "100+ Modules | Drag or Use ^/v | v2.2091", "chatFont.fnt"
         );
         countLabel->setScale(0.55f);
         countLabel->setOpacity(160);
         countLabel->setPosition({winSize.width / 2.f + 48.f, 16.f});
         m_mainLayer->addChild(countLabel);
 
+        this->setTouchEnabled(true);
         populateCategory("Player");
         return true;
+    }
+
+    std::string formatSliderValue(const FeatureItem& feat, float val) {
+        if (!feat.choices.empty()) {
+            int idx = std::clamp(static_cast<int>(std::round(val)), 0, static_cast<int>(feat.choices.size()) - 1);
+            return feat.choices[idx];
+        }
+        return fmt::format("{:.2f}", val);
+    }
+
+    bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
+        CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
+        CCRect scrollRect(
+            m_clipOrigin.x,
+            m_clipOrigin.y,
+            m_scrollSize.width,
+            m_scrollSize.height
+        );
+        if (scrollRect.containsPoint(local) && m_maxScrollY > 0.f) {
+            m_draggingScroll = true;
+            m_lastTouchY = local.y;
+            return true;
+        }
+        return Popup::ccTouchBegan(touch, event);
+    }
+
+    void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
+        if (m_draggingScroll) {
+            CCPoint local = m_mainLayer->convertTouchToNodeSpace(touch);
+            float deltaY = local.y - m_lastTouchY;
+            m_lastTouchY = local.y;
+            // Dragging finger down moves content up (increases m_scrollY)
+            m_scrollY = std::clamp(m_scrollY + deltaY, 0.f, m_maxScrollY);
+            m_contentLayer->setPositionY(m_scrollY);
+            return;
+        }
+        Popup::ccTouchMoved(touch, event);
+    }
+
+    void ccTouchEnded(CCTouch* touch, CCEvent* event) override {
+        m_draggingScroll = false;
+        Popup::ccTouchEnded(touch, event);
+    }
+
+    void ccTouchCancelled(CCTouch* touch, CCEvent* event) override {
+        m_draggingScroll = false;
+        Popup::ccTouchCancelled(touch, event);
     }
 
     void onSelectTab(CCObject* sender) {
@@ -146,13 +201,13 @@ protected:
             m_contentLayer->addChild(row);
 
             auto nameLbl = CCLabelBMFont::create(feat.name.c_str(), "bigFont.fnt");
-            nameLbl->setScale(0.38f);
+            nameLbl->setScale(0.36f);
             nameLbl->setAnchorPoint({0.f, 0.5f});
             nameLbl->setPosition({8.f, 6.f});
             row->addChild(nameLbl);
 
             auto descLbl = CCLabelBMFont::create(feat.desc.c_str(), "chatFont.fnt");
-            descLbl->setScale(0.4f);
+            descLbl->setScale(0.38f);
             descLbl->setColor({180, 180, 180});
             descLbl->setAnchorPoint({0.f, 0.5f});
             descLbl->setPosition({8.f, -8.f});
@@ -172,11 +227,11 @@ protected:
                 rowMenu->addChild(toggle);
             } else {
                 float val = state.getFloat(feat.id);
-                auto valStr = fmt::format("{:.2f}", val);
+                auto valStr = formatSliderValue(feat, val);
                 auto valLbl = CCLabelBMFont::create(valStr.c_str(), "goldFont.fnt");
-                valLbl->setScale(0.42f);
+                valLbl->setScale(feat.choices.empty() ? 0.4f : 0.32f);
                 valLbl->setID(feat.id + "_lbl");
-                valLbl->setPosition({240.f, 0.f});
+                valLbl->setPosition({228.f, 0.f});
                 row->addChild(valLbl);
 
                 auto minusSpr = ButtonSprite::create(
@@ -186,7 +241,7 @@ protected:
                     minusSpr, this, menu_selector(VantaPopup::onSliderStep)
                 );
                 minusBtn->setID(feat.id + "|down");
-                minusBtn->setPosition({208.f, 0.f});
+                minusBtn->setPosition({184.f, 0.f});
                 rowMenu->addChild(minusBtn);
 
                 auto plusSpr = ButtonSprite::create(
@@ -227,17 +282,20 @@ protected:
         auto& state = VantaState::get();
         for (const auto& f : state.features) {
             if (f.id == id) {
-                float step = (f.maxVal - f.minVal) / 20.0f;
+                float step = !f.choices.empty() ? 1.0f : ((f.maxVal - f.minVal) / 20.0f);
                 if (id == "fps_val" || id == "tps_val") step = 15.0f;
                 float cur = state.getFloat(id);
                 cur += (dir == "up" ? step : -step);
                 cur = std::clamp(cur, f.minVal, f.maxVal);
+                if (!f.choices.empty()) {
+                    cur = std::round(cur);
+                }
                 state.setFloat(id, cur);
 
                 if (auto lbl = typeinfo_cast<CCLabelBMFont*>(
                     m_contentLayer->getChildByIDRecursive(id + "_lbl")
                 )) {
-                    lbl->setString(fmt::format("{:.2f}", cur).c_str());
+                    lbl->setString(formatSliderValue(f, cur).c_str());
                 }
                 if (id == "fps_val" || id == "tps_val") applyFrameRates();
                 break;
