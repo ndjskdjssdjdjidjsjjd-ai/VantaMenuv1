@@ -92,13 +92,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
     }
 
-    bool init(GJGameLevel* level, bool dontCreateObjects) {
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         auto& state = VantaState::get();
         if (state.getBool("force_ldm") && level) {
             level->m_lowDetailModeToggled = true;
         }
 
-        if (!PlayLayer::init(level, dontCreateObjects)) return false;
+        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
 
         state.sessionAttempts = 0;
         state.totalClicks = 0;
@@ -158,10 +158,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
         auto nextBtn = CCMenuItemSpriteExtra::create(nextSpr, this, menu_selector(VantaPlayLayer::onNextStartPos));
         nextBtn->setPosition({65.f, 0.f});
         m_fields->m_startPosMenu->addChild(nextBtn);
-
-        if (state.getBool("instant_complete")) {
-            this->levelComplete();
-        }
 
         return true;
     }
@@ -242,16 +238,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             auto sp = m_fields->m_startPositions[state.selectedStartPos];
             m_player1->setPosition(sp->getPosition());
         }
-    }
-
-    void levelComplete() {
-        auto& state = VantaState::get();
-        if (state.getBool("safe_mode") || (state.getBool("auto_safe_mode") && state.isCheating())) {
-            this->resetLevel();
-            FLAlertLayer::create("VantaMenu Safe Mode", "Level completion blocked to protect account progress.", "OK")->show();
-            return;
-        }
-        PlayLayer::levelComplete();
     }
 
     void postUpdate(float dt) {
