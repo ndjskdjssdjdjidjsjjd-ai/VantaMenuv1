@@ -282,7 +282,7 @@ protected:
                 if (result.isOk()) {
                     auto optPath = result.unwrap();
                     if (optPath.has_value()) {
-                        std::string chosen = optPath.value().toString();
+                        std::string chosen = optPath.value().string();
                         auto& state = VantaState::get();
                         state.setCustomBgImagePath(chosen);
                         state.setBool("custom_bg_en", true);
